@@ -69,6 +69,12 @@
                             <span class="text-muted">Price:</span>
                             <strong class="text-primary">RM {{ number_format($product->price, 2) }}</strong>
                         </div>
+                        <div class="d-flex justify-content-between align-items-center mt-1">
+                            <span class="text-muted">Stock:</span>
+                            <span class="badge bg-{{ $product->stock_quantity > 10 ? 'info' : ($product->stock_quantity > 0 ? 'warning' : 'danger') }}">
+                                {{ $product->stock_quantity }} units
+                            </span>
+                        </div>
                     </div>
 
                     @if($product->description)
@@ -84,8 +90,8 @@
                 <div class="card-footer bg-light">
                     <div class="d-flex justify-content-between align-items-center">
                         <small class="text-muted">
-                            <i class="bi bi-{{ $product->is_available ? 'check-circle text-success' : 'x-circle text-danger' }}"></i>
-                            {{ $product->is_available ? 'In Stock' : 'Out of Stock' }}
+                            <i class="bi bi-{{ $product->stock_quantity > 0 ? 'check-circle text-success' : 'x-circle text-danger' }}"></i>
+                            {{ $product->stock_quantity > 0 ? 'In Stock' : 'Out of Stock' }}
                         </small>
                         <small class="text-muted">ID: #{{ $product->id }}</small>
                     </div>
@@ -168,6 +174,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                 },
                 body: JSON.stringify({ is_available: isAvailable })
@@ -233,12 +240,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <tr><th>Category:</th><td>${product.category.name}</td></tr>
                                     <tr><th>Price:</th><td>RM ${parseFloat(product.price).toFixed(2)}</td></tr>
                                     <tr><th>Status:</th><td><span class="badge bg-${product.is_available ? 'success' : 'danger'}">${product.is_available ? 'Available' : 'Unavailable'}</span></td></tr>
+                                    <tr><th>Added to Stock:</th><td>${stats.added_date}</td></tr>
                                 </table>
                                 ${product.description ? `<p class="text-muted">${product.description}</p>` : ''}
                             </div>
                             <div class="col-md-6">
                                 <h6>Sales Statistics</h6>
-                                <div class="card bg-light">
+                                <div class="card bg-light mb-3">
                                     <div class="card-body">
                                         <div class="mb-3">
                                             <small class="text-muted">Total Sold</small>
@@ -248,6 +256,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                             <small class="text-muted">Total Revenue</small>
                                             <h4 class="text-success">RM ${parseFloat(stats.total_revenue).toFixed(2)}</h4>
                                         </div>
+                                    </div>
+                                </div>
+                                
+                                <h6>Current Stock</h6>
+                                <div class="card border-info">
+                                    <div class="card-body text-center">
+                                        <h3 class="mb-0 text-${stats.stock_quantity > 10 ? 'success' : (stats.stock_quantity > 0 ? 'warning' : 'danger')}">${stats.stock_quantity} units</h3>
+                                        <small class="text-muted">${stats.stock_quantity > 10 ? 'Well Stocked' : (stats.stock_quantity > 0 ? 'Low Stock' : 'Out of Stock')}</small>
                                     </div>
                                 </div>
                             </div>

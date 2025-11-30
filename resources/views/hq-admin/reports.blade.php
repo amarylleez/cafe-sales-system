@@ -154,7 +154,7 @@
                                         </div>
                                     </td>
                                     <td><strong class="text-primary">RM {{ number_format($report->total_amount, 2) }}</strong></td>
-                                    <td>{{ $report->transaction_count }}</td>
+                                    <td>{{ $report->items_count ?? 0 }}</td>
                                     <td>
                                         @if($report->status === 'completed')
                                         <span class="badge bg-success"><i class="bi bi-check-circle"></i> Completed</span>
@@ -277,16 +277,16 @@ function viewReport(reportId) {
                     <div class="border-bottom pb-2 mb-2">
                         <h6 class="text-center mb-2">SALES SUMMARY</h6>
                         <div class="row">
-                            <div class="col-6">Total Transactions:</div>
-                            <div class="col-6 text-end"><strong>${report.transaction_count}</strong></div>
+                            <div class="col-6">Total Items:</div>
+                            <div class="col-6 text-end"><strong>${report.items_count || 0}</strong></div>
                         </div>
                         <div class="row">
                             <div class="col-6">Total Sales:</div>
                             <div class="col-6 text-end"><strong>RM ${parseFloat(report.total_amount).toFixed(2)}</strong></div>
                         </div>
                         <div class="row">
-                            <div class="col-6">Average Transaction:</div>
-                            <div class="col-6 text-end"><strong>RM ${(report.total_amount / report.transaction_count).toFixed(2)}</strong></div>
+                            <div class="col-6">Average per Item:</div>
+                            <div class="col-6 text-end"><strong>RM ${report.items_count > 0 ? (report.total_amount / report.items_count).toFixed(2) : '0.00'}</strong></div>
                         </div>
                     </div>
                     

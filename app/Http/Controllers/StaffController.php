@@ -174,7 +174,7 @@ class StaffController extends Controller
                 'completed_at' => now(),
             ]);
 
-            // Create sale items
+            // Create sale items and reduce stock
             foreach ($request->items as $item) {
                 $subtotal = $item['quantity'] * $item['unit_price'];
                 $discount = $item['discount'] ?? 0;
@@ -189,6 +189,25 @@ class StaffController extends Controller
                     'discount' => $discount,
                     'total' => $total,
                 ]);
+                
+                // Reduce stock
+                $product = Product::find($item['product_id']);
+                if ($product) {
+                    $product->stock_quantity = max(0, $product->stock_quantity - $item['quantity']);
+                    if ($product->stock_quantity <= 0) {
+                        $product->is_available = false;
+                    }
+                    $product->save();
+                    
+                    // Log stock reduction
+                    \App\Models\StockLog::create([
+                        'product_id' => $product->id,
+                        'user_id' => auth()->id(),
+                        'quantity' => $item['quantity'],
+                        'type' => 'remove',
+                        'notes' => 'Sold via sales transaction #' . $sale->transaction_id,
+                    ]);
+                }
             }
 
             // Update KPI progress
@@ -409,13 +428,117 @@ class StaffController extends Controller
      */
     public function updateProductAvailability(Request $request, $id)
     {
-        $product = Product::findOrFail($id);
-        $product->is_available = $request->is_available;
-        $product->save();
+        try {
+            $product = Product::findOrFail($id);
+            $product->is_available = $request->boolean('is_available');
+            $product->save();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Product availability updated',
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Product availability updated',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update availability: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Display stock management page
+     */
+    public function stock()
+    {
+        $products = Product::with('category')->orderBy('name')->get();
+        $categories = Category::orderBy('name')->get();
+
+        return view('staff.stock', compact('products', 'categories'));
+    }
+
+    /**
+     * Add stock to a product
+     */
+    public function addStock(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'quantity' => 'required|integer|min:1',
+                'notes' => 'nullable|string|max:255',
+            ]);
+
+            $product = Product::findOrFail($id);
+            $product->stock_quantity += $request->quantity;
+            $product->save();
+
+            // Log the stock addition
+            \App\Models\StockLog::create([
+                'product_id' => $product->id,
+                'user_id' => auth()->id(),
+                'quantity' => $request->quantity,
+                'type' => 'add',
+                'notes' => $request->notes,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Stock added successfully',
+                'new_quantity' => $product->stock_quantity,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to add stock: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Adjust stock (add or remove)
+     */
+    public function adjustStock(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'quantity' => 'required|integer|min:1',
+                'type' => 'required|in:add,remove',
+            ]);
+
+            $product = Product::findOrFail($id);
+            
+            if ($request->type === 'add') {
+                $product->stock_quantity += $request->quantity;
+            } else {
+                if ($product->stock_quantity < $request->quantity) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Cannot remove more than current stock',
+                    ], 400);
+                }
+                $product->stock_quantity -= $request->quantity;
+            }
+            
+            $product->save();
+
+            // Log the stock change
+            \App\Models\StockLog::create([
+                'product_id' => $product->id,
+                'user_id' => auth()->id(),
+                'quantity' => $request->quantity,
+                'type' => $request->type,
+                'notes' => $request->type === 'add' ? 'Stock added via inventory' : 'Stock removed via inventory',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Stock adjusted successfully',
+                'new_quantity' => $product->stock_quantity,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to adjust stock: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }

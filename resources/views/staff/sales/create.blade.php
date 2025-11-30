@@ -106,40 +106,50 @@
 <!-- Item Row Template -->
 <template id="itemRowTemplate">
     <div class="card mb-2 item-row">
-        <div class="card-body">
-            <div class="row align-items-end">
+        <div class="card-body py-2">
+            <div class="row align-items-center">
                 <div class="col-md-4">
-                    <label class="form-label">Product <span class="text-danger">*</span></label>
-                    <select class="form-select product-select" name="items[INDEX][product_id]" required>
+                    <label class="form-label small mb-1">Product <span class="text-danger">*</span></label>
+                    <select class="form-select form-select-sm product-select" name="items[INDEX][product_id]" required>
                         <option value="">Select Product</option>
                         @foreach($products as $product)
-                        <option value="{{ $product->id }}" data-price="{{ $product->price }}">
+                        <option value="{{ $product->id }}" 
+                                data-price="{{ $product->price }}"
+                                data-stock="{{ $product->stock_quantity }}">
                             {{ $product->name }} ({{ $product->category->name }}) - RM {{ number_format($product->price, 2) }}
                         </option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">Quantity <span class="text-danger">*</span></label>
-                    <input type="number" class="form-control quantity-input" name="items[INDEX][quantity]" 
-                           min="1" value="1" required>
+                <div class="col-md-1 text-center">
+                    <label class="form-label small mb-1">Stock</label>
+                    <div class="stock-info">
+                        <span class="badge bg-secondary">-</span>
+                    </div>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label">Unit Price <span class="text-danger">*</span></label>
-                    <input type="number" class="form-control price-input" name="items[INDEX][unit_price]" 
+                    <label class="form-label small mb-1">Qty <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control form-control-sm quantity-input" name="items[INDEX][quantity]" 
+                           min="1" value="1" required>
+                    <small class="text-danger stock-warning" style="display: none; font-size: 10px;">Exceeds stock!</small>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small mb-1">Unit Price <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control form-control-sm price-input" name="items[INDEX][unit_price]" 
                            step="0.01" min="0" required>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">Discount</label>
-                    <input type="number" class="form-control discount-input" name="items[INDEX][discount]" 
+                <div class="col-md-1">
+                    <label class="form-label small mb-1">Discount</label>
+                    <input type="number" class="form-control form-control-sm discount-input" name="items[INDEX][discount]" 
                            step="0.01" min="0" value="0">
                 </div>
-                <div class="col-md-1">
-                    <label class="form-label">Total</label>
-                    <div class="item-total fw-bold">RM 0.00</div>
+                <div class="col-md-1 text-center">
+                    <label class="form-label small mb-1">Total</label>
+                    <div class="item-total fw-bold text-primary">RM 0.00</div>
                 </div>
-                <div class="col-md-1">
-                    <button type="button" class="btn btn-danger btn-sm remove-item-btn w-100">
+                <div class="col-md-1 text-center">
+                    <label class="form-label small mb-1">&nbsp;</label>
+                    <button type="button" class="btn btn-danger btn-sm remove-item-btn">
                         <i class="bi bi-trash"></i>
                     </button>
                 </div>
@@ -182,11 +192,27 @@ document.addEventListener('DOMContentLoaded', function() {
         productSelect.addEventListener('change', function() {
             const selectedOption = this.options[this.selectedIndex];
             const price = selectedOption.dataset.price;
+            const stock = selectedOption.dataset.stock;
             priceInput.value = price || 0;
+            
+            // Show stock info in separate column
+            const stockInfo = itemRow.querySelector('.stock-info');
+            if (stock !== undefined && this.value) {
+                stockInfo.innerHTML = `<span class="badge bg-${stock > 10 ? 'success' : (stock > 0 ? 'warning' : 'danger')}">${stock}</span>`;
+                quantityInput.max = stock;
+            } else {
+                stockInfo.innerHTML = '<span class="badge bg-secondary">-</span>';
+                quantityInput.removeAttribute('max');
+            }
+            
             calculateItemTotal(itemRow);
+            checkStockWarning(itemRow);
         });
 
-        quantityInput.addEventListener('input', () => calculateItemTotal(itemRow));
+        quantityInput.addEventListener('input', () => {
+            calculateItemTotal(itemRow);
+            checkStockWarning(itemRow);
+        });
         priceInput.addEventListener('input', () => calculateItemTotal(itemRow));
         discountInput.addEventListener('input', () => calculateItemTotal(itemRow));
 
@@ -214,6 +240,24 @@ document.addEventListener('DOMContentLoaded', function() {
         
         itemRow.querySelector('.item-total').textContent = 'RM ' + total.toFixed(2);
         calculateGrandTotal();
+    }
+    
+    function checkStockWarning(itemRow) {
+        const productSelect = itemRow.querySelector('.product-select');
+        const quantityInput = itemRow.querySelector('.quantity-input');
+        const stockWarning = itemRow.querySelector('.stock-warning');
+        
+        const selectedOption = productSelect.options[productSelect.selectedIndex];
+        const stock = parseInt(selectedOption.dataset.stock) || 0;
+        const quantity = parseInt(quantityInput.value) || 0;
+        
+        if (productSelect.value && quantity > stock) {
+            stockWarning.style.display = 'block';
+            quantityInput.classList.add('is-invalid');
+        } else {
+            stockWarning.style.display = 'none';
+            quantityInput.classList.remove('is-invalid');
+        }
     }
 
     function calculateGrandTotal() {
@@ -244,6 +288,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (itemsContainer.children.length === 0) {
             alert('Please add at least one item to the sale.');
+            return;
+        }
+        
+        // Check for stock warnings
+        let hasStockError = false;
+        document.querySelectorAll('.item-row').forEach((row) => {
+            const productSelect = row.querySelector('.product-select');
+            const quantityInput = row.querySelector('.quantity-input');
+            const selectedOption = productSelect.options[productSelect.selectedIndex];
+            const stock = parseInt(selectedOption.dataset.stock) || 0;
+            const quantity = parseInt(quantityInput.value) || 0;
+            
+            if (productSelect.value && quantity > stock) {
+                hasStockError = true;
+            }
+        });
+        
+        if (hasStockError) {
+            alert('Some items exceed available stock. Please adjust quantities.');
             return;
         }
 

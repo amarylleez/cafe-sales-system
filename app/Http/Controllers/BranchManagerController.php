@@ -314,14 +314,21 @@ class BranchManagerController extends Controller
      */
     public function updateProductAvailability(Request $request, $id)
     {
-        $product = Product::findOrFail($id);
-        $product->is_available = $request->is_available;
-        $product->save();
+        try {
+            $product = Product::findOrFail($id);
+            $product->is_available = $request->boolean('is_available');
+            $product->save();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Product availability updated',
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Product availability updated',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update availability: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -403,5 +410,22 @@ class BranchManagerController extends Controller
                 'values' => $chartValues
             ]
         ]);
+    }
+
+    /**
+     * Display stock overview page (view only)
+     */
+    public function stock()
+    {
+        $products = Product::with('category')->orderBy('name')->get();
+        $categories = Category::orderBy('name')->get();
+        
+        // Get recent stock logs
+        $stockLogs = \App\Models\StockLog::with(['product', 'user'])
+            ->orderBy('created_at', 'desc')
+            ->limit(20)
+            ->get();
+
+        return view('branch-manager.stock', compact('products', 'categories', 'stockLogs'));
     }
 }

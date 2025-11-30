@@ -69,6 +69,12 @@
                             <span class="text-muted">Price:</span>
                             <strong class="text-primary">RM {{ number_format($product->price, 2) }}</strong>
                         </div>
+                        <div class="d-flex justify-content-between align-items-center mt-1">
+                            <span class="text-muted">Stock:</span>
+                            <span class="badge bg-{{ $product->stock_quantity > 10 ? 'info' : ($product->stock_quantity > 0 ? 'warning' : 'danger') }}">
+                                {{ $product->stock_quantity }} units
+                            </span>
+                        </div>
                     </div>
 
                     @if($product->description)
@@ -79,16 +85,13 @@
                         <button class="btn btn-sm btn-outline-primary view-details-btn" data-product-id="{{ $product->id }}">
                             <i class="bi bi-eye"></i> View Details
                         </button>
-                        <button class="btn btn-sm btn-outline-success mark-sold-btn" data-product-id="{{ $product->id }}" data-product-name="{{ $product->name }}">
-                            <i class="bi bi-check-circle"></i> Mark as Sold
-                        </button>
                     </div>
                 </div>
                 <div class="card-footer bg-light">
                     <div class="d-flex justify-content-between align-items-center">
                         <small class="text-muted">
-                            <i class="bi bi-{{ $product->is_available ? 'check-circle text-success' : 'x-circle text-danger' }}"></i>
-                            {{ $product->is_available ? 'In Stock' : 'Out of Stock' }}
+                            <i class="bi bi-{{ $product->stock_quantity > 0 ? 'check-circle text-success' : 'x-circle text-danger' }}"></i>
+                            {{ $product->stock_quantity > 0 ? 'In Stock' : 'Out of Stock' }}
                         </small>
                         <small class="text-muted">ID: #{{ $product->id }}</small>
                     </div>
@@ -125,42 +128,12 @@
     </div>
 </div>
 
-<!-- Mark as Sold Modal -->
-<div class="modal fade" id="markSoldModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Mark Items as Sold</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="markSoldForm">
-                    <input type="hidden" id="soldProductId">
-                    <div class="mb-3">
-                        <label class="form-label">Product:</label>
-                        <h6 id="soldProductName"></h6>
-                    </div>
-                    <div class="mb-3">
-                        <label for="soldQuantity" class="form-label">Quantity Sold <span class="text-danger">*</span></label>
-                        <input type="number" class="form-control" id="soldQuantity" min="1" value="1" required>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="confirmMarkSold">
-                    <i class="bi bi-check-circle"></i> Confirm
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+
 
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const productDetailsModal = new bootstrap.Modal(document.getElementById('productDetailsModal'));
-    const markSoldModal = new bootstrap.Modal(document.getElementById('markSoldModal'));
 
     // Search functionality
     const searchInput = document.getElementById('searchInput');
@@ -198,40 +171,48 @@ document.addEventListener('DOMContentLoaded', function() {
         toggle.addEventListener('change', function() {
             const productId = this.dataset.productId;
             const isAvailable = this.checked;
+            const toggleElement = this;
             
             fetch(`/staff/inventory/${productId}/availability`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'Accept': 'application/json',
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                 },
                 body: JSON.stringify({ is_available: isAvailable })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Server error: ' + response.status);
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
-                    const label = this.nextElementSibling.querySelector('small');
+                    const label = toggleElement.nextElementSibling.querySelector('small');
                     label.textContent = isAvailable ? 'Available' : 'Unavailable';
                     
-                    const card = this.closest('.card');
-                    const statusIcon = card.querySelector('.card-footer i');
-                    const statusText = card.querySelector('.card-footer small');
+                    const card = toggleElement.closest('.card');
+                    const footer = card.querySelector('.card-footer');
+                    const statusIcon = footer.querySelector('i');
+                    const statusSmall = footer.querySelector('small');
                     
                     if (isAvailable) {
                         statusIcon.className = 'bi bi-check-circle text-success';
-                        statusText.textContent = 'In Stock';
+                        statusSmall.innerHTML = '<i class="bi bi-check-circle text-success"></i> In Stock';
                     } else {
                         statusIcon.className = 'bi bi-x-circle text-danger';
-                        statusText.textContent = 'Out of Stock';
+                        statusSmall.innerHTML = '<i class="bi bi-x-circle text-danger"></i> Out of Stock';
                     }
                 } else {
-                    this.checked = !isAvailable;
+                    toggleElement.checked = !isAvailable;
                     alert('Failed to update availability');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                this.checked = !isAvailable;
+                toggleElement.checked = !isAvailable;
                 alert('An error occurred');
             });
         });
@@ -268,12 +249,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <tr><th>Category:</th><td>${product.category.name}</td></tr>
                                     <tr><th>Price:</th><td>RM ${parseFloat(product.price).toFixed(2)}</td></tr>
                                     <tr><th>Status:</th><td><span class="badge bg-${product.is_available ? 'success' : 'danger'}">${product.is_available ? 'Available' : 'Unavailable'}</span></td></tr>
+                                    <tr><th>Added to Stock:</th><td>${stats.added_date}</td></tr>
                                 </table>
                                 ${product.description ? `<p class="text-muted">${product.description}</p>` : ''}
                             </div>
                             <div class="col-md-6">
                                 <h6>Sales Statistics</h6>
-                                <div class="card bg-light">
+                                <div class="card bg-light mb-3">
                                     <div class="card-body">
                                         <div class="mb-3">
                                             <small class="text-muted">Total Sold</small>
@@ -285,9 +267,34 @@ document.addEventListener('DOMContentLoaded', function() {
                                         </div>
                                     </div>
                                 </div>
+                                
+                                <h6>Stock Management</h6>
+                                <div class="card border-primary">
+                                    <div class="card-body">
+                                        <div class="text-center mb-3">
+                                            <small class="text-muted">Current Stock</small>
+                                            <h3 id="currentStockDisplay" class="mb-0">${stats.stock_quantity} units</h3>
+                                        </div>
+                                        <div class="d-flex justify-content-center align-items-center gap-2">
+                                            <button type="button" class="btn btn-danger btn-lg" id="decreaseStockBtn" data-product-id="${product.id}" ${stats.stock_quantity <= 0 ? 'disabled' : ''}>
+                                                <i class="bi bi-dash-lg"></i>
+                                            </button>
+                                            <input type="number" id="stockAdjustAmount" class="form-control text-center" value="1" min="1" max="100" style="width: 80px;">
+                                            <button type="button" class="btn btn-success btn-lg" id="increaseStockBtn" data-product-id="${product.id}">
+                                                <i class="bi bi-plus-lg"></i>
+                                            </button>
+                                        </div>
+                                        <div class="text-center mt-2">
+                                            <small class="text-muted">Click - to remove or + to add stock</small>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     `;
+                    
+                    // Attach stock adjustment handlers
+                    attachStockHandlers(product.id, stats.stock_quantity);
                 }
             })
             .catch(error => {
@@ -298,52 +305,72 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     });
-
-    // Mark as sold
-    document.querySelectorAll('.mark-sold-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const productId = this.dataset.productId;
-            const productName = this.dataset.productName;
-            
-            document.getElementById('soldProductId').value = productId;
-            document.getElementById('soldProductName').textContent = productName;
-            document.getElementById('soldQuantity').value = 1;
-            
-            markSoldModal.show();
+    
+    // Stock adjustment handlers
+    function attachStockHandlers(productId, currentStock) {
+        let stockCount = currentStock;
+        
+        document.getElementById('increaseStockBtn').addEventListener('click', function() {
+            const amount = parseInt(document.getElementById('stockAdjustAmount').value) || 1;
+            adjustStock(productId, amount, 'add');
         });
-    });
-
-    document.getElementById('confirmMarkSold').addEventListener('click', function() {
-        const productId = document.getElementById('soldProductId').value;
-        const quantity = document.getElementById('soldQuantity').value;
         
-        if (quantity < 1) {
-            alert('Please enter a valid quantity');
-            return;
-        }
+        document.getElementById('decreaseStockBtn').addEventListener('click', function() {
+            const amount = parseInt(document.getElementById('stockAdjustAmount').value) || 1;
+            if (stockCount >= amount) {
+                adjustStock(productId, amount, 'remove');
+            } else {
+                alert('Cannot remove more than current stock');
+            }
+        });
+    }
+    
+    function adjustStock(productId, amount, type) {
+        const btn = type === 'add' ? document.getElementById('increaseStockBtn') : document.getElementById('decreaseStockBtn');
+        btn.disabled = true;
         
-        fetch(`/staff/inventory/${productId}/mark-sold`, {
+        fetch(`/staff/stock/${productId}/adjust`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'Accept': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
             },
-            body: JSON.stringify({ quantity: quantity })
+            body: JSON.stringify({ quantity: amount, type: type })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) throw new Error('Server error');
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
-                alert(data.message);
-                markSoldModal.hide();
+                document.getElementById('currentStockDisplay').textContent = data.new_quantity + ' units';
+                
+                // Update decrease button state
+                const decreaseBtn = document.getElementById('decreaseStockBtn');
+                decreaseBtn.disabled = data.new_quantity <= 0;
+                
+                // Update the card on the main page
+                const card = document.querySelector(`[data-product-id="${productId}"]`).closest('.card');
+                if (card) {
+                    const stockBadge = card.querySelector('.badge.bg-info, .badge.bg-warning, .badge.bg-danger');
+                    if (stockBadge && stockBadge.textContent.includes('units')) {
+                        stockBadge.textContent = data.new_quantity + ' units';
+                        stockBadge.className = 'badge bg-' + (data.new_quantity > 10 ? 'info' : (data.new_quantity > 0 ? 'warning' : 'danger'));
+                    }
+                }
             } else {
-                alert('Failed to mark items as sold');
+                alert(data.message || 'Failed to adjust stock');
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('An error occurred');
+            alert('An error occurred while adjusting stock');
+        })
+        .finally(() => {
+            btn.disabled = false;
         });
-    });
+    }
 });
 </script>
 @endpush

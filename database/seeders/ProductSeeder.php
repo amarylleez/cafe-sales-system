@@ -116,6 +116,7 @@ class ProductSeeder extends Seeder
                 'name' => $product['name'],
                 'price' => $product['price'],
                 'is_available' => true,
+                'stock_quantity' => rand(10, 100),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
