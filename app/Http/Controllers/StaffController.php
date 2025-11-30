@@ -9,6 +9,7 @@ use App\Models\DailySalesItem;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\Notification;
+use App\Models\Benchmark;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -44,12 +45,63 @@ class StaffController extends Controller
             ->where('status', 'completed')
             ->sum('total_amount');
 
+        // Get today's transaction count
+        $todayTransactions = DailySale::where('branch_id', $branchId)
+            ->whereDate('sale_date', Carbon::today())
+            ->where('status', 'completed')
+            ->count();
+
+        // Get this week's sales summary (Monday to Sunday)
+        $weekStart = Carbon::now()->startOfWeek();
+        $weekEnd = Carbon::now()->endOfWeek();
+        $weeklySales = DailySale::where('branch_id', $branchId)
+            ->whereBetween('sale_date', [$weekStart, $weekEnd])
+            ->where('status', 'completed')
+            ->sum('total_amount');
+
         // Get this month's sales summary
         $monthlySales = DailySale::where('branch_id', $branchId)
             ->whereMonth('sale_date', $currentMonth->month)
             ->whereYear('sale_date', $currentMonth->year)
             ->where('status', 'completed')
             ->sum('total_amount');
+
+        // Get this month's transaction count
+        $monthlyTransactions = DailySale::where('branch_id', $branchId)
+            ->whereMonth('sale_date', $currentMonth->month)
+            ->whereYear('sale_date', $currentMonth->year)
+            ->where('status', 'completed')
+            ->count();
+
+        // Get yesterday's sales for comparison
+        $yesterdaySales = DailySale::where('branch_id', $branchId)
+            ->whereDate('sale_date', Carbon::yesterday())
+            ->where('status', 'completed')
+            ->sum('total_amount');
+
+        // Get last month's sales for comparison
+        $lastMonth = Carbon::now()->subMonth();
+        $lastMonthSales = DailySale::where('branch_id', $branchId)
+            ->whereMonth('sale_date', $lastMonth->month)
+            ->whereYear('sale_date', $lastMonth->year)
+            ->where('status', 'completed')
+            ->sum('total_amount');
+
+        // Get items sold by category this month for pie chart
+        $categorySales = DailySalesItem::select(
+                'categories.name as category_name',
+                DB::raw('SUM(daily_sales_items.quantity) as total_quantity')
+            )
+            ->join('daily_sales', 'daily_sales_items.daily_sale_id', '=', 'daily_sales.id')
+            ->join('products', 'daily_sales_items.product_id', '=', 'products.id')
+            ->join('categories', 'products.category_id', '=', 'categories.id')
+            ->where('daily_sales.branch_id', $branchId)
+            ->whereMonth('daily_sales.sale_date', $currentMonth->month)
+            ->whereYear('daily_sales.sale_date', $currentMonth->year)
+            ->where('daily_sales.status', 'completed')
+            ->groupBy('categories.id', 'categories.name')
+            ->orderByDesc('total_quantity')
+            ->get();
 
         // Get KPI progress data for charts
         $kpiProgressData = $this->getKPIProgressData($branchId, $currentMonth);
@@ -60,7 +112,13 @@ class StaffController extends Controller
             'kpis',
             'unreadNotifications',
             'todaySales',
+            'todayTransactions',
+            'weeklySales',
             'monthlySales',
+            'monthlyTransactions',
+            'yesterdaySales',
+            'lastMonthSales',
+            'categorySales',
             'kpiProgressData'
         ));
     }
@@ -294,6 +352,7 @@ class StaffController extends Controller
         $branchId = $user->branch_id;
         $currentMonth = Carbon::now();
 
+        // Get branch-specific KPIs
         $kpis = KPI::where('branch_id', $branchId)
             ->where('status', 'active')
             ->whereMonth('target_month', $currentMonth->month)
@@ -305,7 +364,45 @@ class StaffController extends Controller
             }])
             ->get();
 
-        return view('staff.kpi', compact('kpis'));
+        // Get active benchmarks set by HQ Admin
+        $benchmark = Benchmark::where('is_active', true)->first();
+
+        // Calculate staff's monthly sales (sales submitted by this staff member)
+        $staffMonthlySales = DailySale::where('staff_id', $user->id)
+            ->whereMonth('sale_date', $currentMonth->month)
+            ->whereYear('sale_date', $currentMonth->year)
+            ->where('status', 'completed')
+            ->sum('total_amount');
+
+        // Calculate staff's transaction count
+        $staffTransactionCount = DailySale::where('staff_id', $user->id)
+            ->whereMonth('sale_date', $currentMonth->month)
+            ->whereYear('sale_date', $currentMonth->year)
+            ->where('status', 'completed')
+            ->count();
+
+        // Calculate branch's total monthly sales
+        $branchMonthlySales = DailySale::where('branch_id', $branchId)
+            ->whereMonth('sale_date', $currentMonth->month)
+            ->whereYear('sale_date', $currentMonth->year)
+            ->where('status', 'completed')
+            ->sum('total_amount');
+
+        // Calculate branch's transaction count
+        $branchTransactionCount = DailySale::where('branch_id', $branchId)
+            ->whereMonth('sale_date', $currentMonth->month)
+            ->whereYear('sale_date', $currentMonth->year)
+            ->where('status', 'completed')
+            ->count();
+
+        return view('staff.kpi', compact(
+            'kpis', 
+            'benchmark', 
+            'staffMonthlySales', 
+            'staffTransactionCount',
+            'branchMonthlySales',
+            'branchTransactionCount'
+        ));
     }
 
     /**
@@ -399,12 +496,20 @@ class StaffController extends Controller
     {
         $user = auth()->user();
 
-        $alerts = Notification::where('user_id', $user->id)
+        // Get regular notifications
+        $notifications = Notification::where('user_id', $user->id)
             ->whereIn('type', ['kpi_target_not_met', 'low_stock_alert'])
             ->orderBy('created_at', 'desc')
-            ->paginate(10);
+            ->get();
 
-        return view('staff.alerts', compact('alerts'));
+        // Get low stock products (stock < 10) - products are global, not branch-specific
+        $lowStockProducts = Product::with('category')
+            ->where('stock_quantity', '<', 10)
+            ->where('is_available', true)
+            ->orderBy('stock_quantity', 'asc')
+            ->get();
+
+        return view('staff.alerts', compact('notifications', 'lowStockProducts'));
     }
 
     // ========== INVENTORY METHODS ==========

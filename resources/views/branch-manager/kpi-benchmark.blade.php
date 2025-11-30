@@ -20,6 +20,137 @@
         </div>
     </div>
 
+    @if(isset($benchmark) && $benchmark)
+    <!-- HQ Benchmark Targets -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5 class="mb-3"><i class="bi bi-bullseye"></i> HQ Benchmark Targets</h5>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <!-- Branch Sales Target Card -->
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="card-body text-white">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="opacity-75 mb-2">Branch Sales Target</h6>
+                            <h2 class="mb-1">RM {{ number_format($benchmark->monthly_sales_target, 2) }}</h2>
+                            <p class="mb-0 opacity-75">Monthly Target</p>
+                        </div>
+                        <div class="opacity-50">
+                            <i class="bi bi-bullseye" style="font-size: 2.5rem;"></i>
+                        </div>
+                    </div>
+                    
+                    @php
+                        $branchSalesPercentage = $benchmark->monthly_sales_target > 0 
+                            ? min(($branchMonthlySales / $benchmark->monthly_sales_target) * 100, 100) 
+                            : 0;
+                    @endphp
+                    
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Progress</span>
+                            <span>{{ number_format($branchSalesPercentage, 1) }}%</span>
+                        </div>
+                        <div class="progress" style="height: 8px; background: rgba(255,255,255,0.3);">
+                            <div class="progress-bar bg-white" style="width: {{ $branchSalesPercentage }}%;"></div>
+                        </div>
+                        <div class="d-flex justify-content-between mt-2">
+                            <small>RM {{ number_format($branchMonthlySales, 2) }}</small>
+                            <small>RM {{ number_format($benchmark->monthly_sales_target, 2) }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transaction Target Card -->
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <div class="card-body text-white">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="opacity-75 mb-2">Transaction Target</h6>
+                            <h2 class="mb-1">{{ number_format($benchmark->transaction_target) }}</h2>
+                            <p class="mb-0 opacity-75">Monthly Transactions</p>
+                        </div>
+                        <div class="opacity-50">
+                            <i class="bi bi-receipt" style="font-size: 2.5rem;"></i>
+                        </div>
+                    </div>
+                    
+                    @php
+                        $branchTxnPercentage = $benchmark->transaction_target > 0 
+                            ? min(($branchTransactionCount / $benchmark->transaction_target) * 100, 100) 
+                            : 0;
+                    @endphp
+                    
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Progress</span>
+                            <span>{{ number_format($branchTxnPercentage, 1) }}%</span>
+                        </div>
+                        <div class="progress" style="height: 8px; background: rgba(255,255,255,0.3);">
+                            <div class="progress-bar bg-white" style="width: {{ $branchTxnPercentage }}%;"></div>
+                        </div>
+                        <div class="d-flex justify-content-between mt-2">
+                            <small>{{ number_format($branchTransactionCount) }} completed</small>
+                            <small>{{ number_format($benchmark->transaction_target) }} target</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Staff Target Card -->
+        <div class="col-md-4">
+            <div class="card shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <div class="card-body text-white">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="opacity-75 mb-2">Staff Sales Target</h6>
+                            <h2 class="mb-1">RM {{ number_format($benchmark->staff_sales_target, 2) }}</h2>
+                            <p class="mb-0 opacity-75">Per Staff Monthly</p>
+                        </div>
+                        <div class="opacity-50">
+                            <i class="bi bi-person-check" style="font-size: 2.5rem;"></i>
+                        </div>
+                    </div>
+                    
+                    @php
+                        $staffCount = $staffKpis->count();
+                        $staffMeetingTarget = $staffKpis->filter(fn($s) => $s['progress'] >= 100)->count();
+                    @endphp
+                    
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Staff Meeting Target</span>
+                            <span>{{ $staffMeetingTarget }}/{{ $staffCount }}</span>
+                        </div>
+                        <div class="progress" style="height: 8px; background: rgba(255,255,255,0.3);">
+                            <div class="progress-bar bg-white" style="width: {{ $staffCount > 0 ? ($staffMeetingTarget / $staffCount) * 100 : 0 }}%;"></div>
+                        </div>
+                        <div class="mt-2">
+                            <small>{{ $staffMeetingTarget }} staff achieved target this month</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @else
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle"></i> No benchmarks have been set by HQ Admin yet. Please contact your administrator.
+            </div>
+        </div>
+    </div>
+    @endif
+
     <!-- Monthly Sales Comparison Chart -->
     <div class="row mb-4">
         <div class="col-12">
@@ -100,7 +231,7 @@
                         @endforeach
                     @else
                     <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i> No KPIs set for this month.
+                        <i class="bi bi-info-circle"></i> No additional branch-specific KPIs set for this month.
                     </div>
                     @endif
                 </div>
@@ -112,29 +243,30 @@
     <div class="row">
         <div class="col-12">
             <div class="card shadow-sm">
-                <div class="card-header bg-white">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
                     <h5 class="mb-0"><i class="bi bi-people"></i> Staff Performance Tracking</h5>
+                    @if(isset($benchmark) && $benchmark)
+                    <span class="badge bg-info">Target: RM {{ number_format($benchmark->staff_sales_target, 2) }} per staff</span>
+                    @endif
                 </div>
                 <div class="card-body">
+                    @if($staffKpis->count() > 0)
                     <div class="table-responsive">
                         <table class="table table-hover">
                             <thead class="table-light">
                                 <tr>
                                     <th>Staff</th>
                                     <th>Monthly Sales</th>
+                                    <th>Target</th>
                                     <th>Transactions</th>
-                                    <th>Avg. Transaction</th>
-                                    <th>Performance</th>
-                                    <th>Actions</th>
+                                    <th>Progress</th>
+                                    <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($staffKpis as $staffKpi)
+                                @foreach($staffKpis->sortByDesc('sales') as $staffKpi)
                                 @php
                                     $avgTransaction = $staffKpi['transactions'] > 0 ? $staffKpi['sales'] / $staffKpi['transactions'] : 0;
-                                    // Calculate performance based on branch average
-                                    $branchAvg = $staffKpis->avg('sales');
-                                    $performance = $branchAvg > 0 ? ($staffKpi['sales'] / $branchAvg) * 100 : 0;
                                 @endphp
                                 <tr>
                                     <td>
@@ -149,43 +281,46 @@
                                         </div>
                                     </td>
                                     <td><strong class="text-primary">RM {{ number_format($staffKpi['sales'], 2) }}</strong></td>
-                                    <td>{{ number_format($staffKpi['transactions']) }}</td>
-                                    <td>RM {{ number_format($avgTransaction, 2) }}</td>
                                     <td>
-                                        <div class="progress" style="height: 20px; min-width: 100px;">
-                                            <div class="progress-bar bg-{{ $performance >= 100 ? 'success' : ($performance >= 75 ? 'info' : 'warning') }}" 
-                                                 style="width: {{ min($performance, 100) }}%;">
-                                                {{ number_format($performance, 0) }}%
+                                        @if($staffKpi['target'] > 0)
+                                        <span class="text-muted">RM {{ number_format($staffKpi['target'], 2) }}</span>
+                                        @else
+                                        <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        {{ number_format($staffKpi['transactions']) }}
+                                        <br><small class="text-muted">Avg: RM {{ number_format($avgTransaction, 2) }}</small>
+                                    </td>
+                                    <td style="min-width: 150px;">
+                                        <div class="progress" style="height: 20px;">
+                                            <div class="progress-bar bg-{{ $staffKpi['progress'] >= 100 ? 'success' : ($staffKpi['progress'] >= 75 ? 'info' : ($staffKpi['progress'] >= 50 ? 'warning' : 'danger')) }}" 
+                                                 style="width: {{ $staffKpi['progress'] }}%;">
+                                                {{ number_format($staffKpi['progress'], 1) }}%
                                             </div>
                                         </div>
                                     </td>
                                     <td>
-                                        <a href="#" class="btn btn-sm btn-outline-primary" onclick="viewStaffDetails({{ $staffKpi['staff']->id }})">
-                                            <i class="bi bi-eye"></i> View Details
-                                        </a>
+                                        @if($staffKpi['progress'] >= 100)
+                                        <span class="badge bg-success"><i class="bi bi-check-circle"></i> Target Met</span>
+                                        @elseif($staffKpi['progress'] >= 75)
+                                        <span class="badge bg-info"><i class="bi bi-arrow-up"></i> On Track</span>
+                                        @elseif($staffKpi['progress'] >= 50)
+                                        <span class="badge bg-warning text-dark"><i class="bi bi-exclamation"></i> Needs Effort</span>
+                                        @else
+                                        <span class="badge bg-danger"><i class="bi bi-exclamation-triangle"></i> Behind</span>
+                                        @endif
                                     </td>
                                 </tr>
                                 @endforeach
                             </tbody>
                         </table>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Staff Details Modal -->
-<div class="modal fade" id="staffDetailsModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Staff Performance Details</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" id="staffDetailsContent">
-                <div class="text-center">
-                    <div class="spinner-border" role="status"></div>
+                    @else
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> No staff members found in this branch.
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -195,25 +330,43 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-const staffDetailsModal = new bootstrap.Modal(document.getElementById('staffDetailsModal'));
-
 document.addEventListener('DOMContentLoaded', function() {
     // Monthly Sales Comparison Chart
     const monthlySalesData = @json($monthlySalesData);
     const ctx = document.getElementById('monthlySalesChart');
     
+    @if(isset($benchmark) && $benchmark)
+    const targetLine = {{ $benchmark->monthly_sales_target }};
+    @else
+    const targetLine = 0;
+    @endif
+    
     new Chart(ctx, {
         type: 'bar',
         data: {
             labels: monthlySalesData.labels,
-            datasets: [{
-                label: 'Monthly Sales (RM)',
-                data: monthlySalesData.values,
-                backgroundColor: 'rgba(102, 126, 234, 0.8)',
-                borderColor: '#667eea',
-                borderWidth: 2,
-                borderRadius: 5
-            }]
+            datasets: [
+                {
+                    label: 'Monthly Sales (RM)',
+                    data: monthlySalesData.values,
+                    backgroundColor: 'rgba(102, 126, 234, 0.8)',
+                    borderColor: '#667eea',
+                    borderWidth: 2,
+                    borderRadius: 5
+                },
+                @if(isset($benchmark) && $benchmark)
+                {
+                    label: 'Target (RM)',
+                    data: Array(monthlySalesData.labels.length).fill(targetLine),
+                    type: 'line',
+                    borderColor: '#f5576c',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: false
+                }
+                @endif
+            ]
         },
         options: {
             responsive: true,
@@ -225,7 +378,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 tooltip: {
                     callbacks: {
                         label: function(context) {
-                            return 'RM ' + context.parsed.y.toLocaleString();
+                            return context.dataset.label + ': RM ' + context.parsed.y.toLocaleString();
                         }
                     }
                 }
@@ -243,44 +396,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
-
-function viewStaffDetails(staffId) {
-    document.getElementById('staffDetailsContent').innerHTML = `
-        <div class="text-center">
-            <div class="spinner-border" role="status"></div>
-        </div>
-    `;
-    
-    staffDetailsModal.show();
-    
-    fetch(`/branch-manager/staff/${staffId}/details`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Display staff details
-                document.getElementById('staffDetailsContent').innerHTML = `
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h6>Staff Information</h6>
-                            <p><strong>Name:</strong> ${data.staff.name}</p>
-                            <p><strong>Email:</strong> ${data.staff.email}</p>
-                        </div>
-                        <div class="col-md-6">
-                            <h6>Performance Summary</h6>
-                            <p><strong>Total Sales:</strong> RM ${data.totalSales.toFixed(2)}</p>
-                            <p><strong>Transactions:</strong> ${data.transactions}</p>
-                        </div>
-                    </div>
-                `;
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            document.getElementById('staffDetailsContent').innerHTML = `
-                <div class="alert alert-danger">Failed to load staff details</div>
-            `;
-        });
-}
 </script>
 @endpush
 @endsection

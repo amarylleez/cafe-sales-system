@@ -60,6 +60,13 @@
                             </div>
                         </div>
 
+                        <!-- Notes -->
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                      placeholder="Any additional information about this sale"></textarea>
+                        </div>
+
                         <!-- Total Amount Display -->
                         <div class="card bg-light mb-3">
                             <div class="card-body">
@@ -80,20 +87,13 @@
                             </div>
                         </div>
 
-                        <!-- Notes -->
-                        <div class="mb-3">
-                            <label for="notes" class="form-label">Notes</label>
-                            <textarea class="form-control" id="notes" name="notes" rows="3" 
-                                      placeholder="Any additional information about this sale"></textarea>
-                        </div>
-
                         <!-- Submit Buttons -->
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="bi bi-check-circle"></i> Save Sale
-                            </button>
+                        <div class="d-flex justify-content-between">
                             <button type="button" class="btn btn-secondary btn-lg" onclick="window.location.href='{{ route('staff.dashboard') }}'">
                                 <i class="bi bi-x-circle"></i> Cancel
+                            </button>
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-check-circle"></i> Save Sale
                             </button>
                         </div>
                     </form>
@@ -108,7 +108,13 @@
     <div class="card mb-2 item-row">
         <div class="card-body py-2">
             <div class="row align-items-center">
-                <div class="col-md-4">
+                <div class="col-auto">
+                    <label class="form-label small mb-1 d-block">&nbsp;</label>
+                    <button type="button" class="btn btn-danger btn-sm remove-item-btn">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+                <div class="col-md-3">
                     <label class="form-label small mb-1">Product <span class="text-danger">*</span></label>
                     <select class="form-select form-select-sm product-select" name="items[INDEX][product_id]" required>
                         <option value="">Select Product</option>
@@ -143,15 +149,9 @@
                     <input type="number" class="form-control form-control-sm discount-input" name="items[INDEX][discount]" 
                            step="0.01" min="0" value="0">
                 </div>
-                <div class="col-md-1 text-center">
+                <div class="col-md-2 text-end">
                     <label class="form-label small mb-1">Total</label>
                     <div class="item-total fw-bold text-primary">RM 0.00</div>
-                </div>
-                <div class="col-md-1 text-center">
-                    <label class="form-label small mb-1">&nbsp;</label>
-                    <button type="button" class="btn btn-danger btn-sm remove-item-btn">
-                        <i class="bi bi-trash"></i>
-                    </button>
                 </div>
             </div>
         </div>

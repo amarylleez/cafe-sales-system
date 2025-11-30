@@ -19,7 +19,166 @@
         </div>
     </div>
 
+    @if(isset($benchmark) && $benchmark)
+    <!-- Benchmark Targets Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h5 class="mb-3"><i class="bi bi-bullseye"></i> Your Performance Targets</h5>
+        </div>
+    </div>
+
+    <!-- Staff Personal Target Card -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="card-body text-white">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="opacity-75 mb-2">Your Monthly Sales Target</h6>
+                            <h2 class="mb-1">RM {{ number_format($benchmark->staff_sales_target, 2) }}</h2>
+                            <p class="mb-0 opacity-75">Personal Target</p>
+                        </div>
+                        <div class="opacity-50">
+                            <i class="bi bi-person-circle" style="font-size: 3rem;"></i>
+                        </div>
+                    </div>
+                    
+                    @php
+                        $staffSalesPercentage = $benchmark->staff_sales_target > 0 
+                            ? min(($staffMonthlySales / $benchmark->staff_sales_target) * 100, 100) 
+                            : 0;
+                    @endphp
+                    
+                    <div class="mt-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span>Progress</span>
+                            <span>{{ number_format($staffSalesPercentage, 1) }}%</span>
+                        </div>
+                        <div class="progress" style="height: 10px; background: rgba(255,255,255,0.3);">
+                            <div class="progress-bar bg-white" style="width: {{ $staffSalesPercentage }}%;"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-3">
+                        <div class="col-6">
+                            <small class="opacity-75">Achieved</small>
+                            <h5 class="mb-0">RM {{ number_format($staffMonthlySales, 2) }}</h5>
+                        </div>
+                        <div class="col-6 text-end">
+                            <small class="opacity-75">Remaining</small>
+                            <h5 class="mb-0">RM {{ number_format(max($benchmark->staff_sales_target - $staffMonthlySales, 0), 2) }}</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
+                <div class="card-body text-white">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="opacity-75 mb-2">Your Transaction Count</h6>
+                            <h2 class="mb-1">{{ number_format($staffTransactionCount) }}</h2>
+                            <p class="mb-0 opacity-75">Sales Submitted This Month</p>
+                        </div>
+                        <div class="opacity-50">
+                            <i class="bi bi-receipt" style="font-size: 3rem;"></i>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 pt-2">
+                        <div class="row">
+                            <div class="col-6">
+                                <small class="opacity-75">Total Sales Amount</small>
+                                <h5 class="mb-0">RM {{ number_format($staffMonthlySales, 2) }}</h5>
+                            </div>
+                            <div class="col-6 text-end">
+                                <small class="opacity-75">Avg Per Transaction</small>
+                                <h5 class="mb-0">RM {{ $staffTransactionCount > 0 ? number_format($staffMonthlySales / $staffTransactionCount, 2) : '0.00' }}</h5>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Branch Performance Overview -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="bi bi-building"></i> Branch Performance Overview</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="text-center p-3 bg-light rounded">
+                                <small class="text-muted">Branch Sales Target</small>
+                                <h4 class="mb-0 text-primary">RM {{ number_format($benchmark->monthly_sales_target, 2) }}</h4>
+                                
+                                @php
+                                    $branchSalesPercentage = $benchmark->monthly_sales_target > 0 
+                                        ? min(($branchMonthlySales / $benchmark->monthly_sales_target) * 100, 100) 
+                                        : 0;
+                                @endphp
+                                
+                                <div class="progress mt-2" style="height: 8px;">
+                                    <div class="progress-bar bg-primary" style="width: {{ $branchSalesPercentage }}%;"></div>
+                                </div>
+                                <small class="text-muted">{{ number_format($branchSalesPercentage, 1) }}% achieved</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center p-3 bg-light rounded">
+                                <small class="text-muted">Branch Transaction Target</small>
+                                <h4 class="mb-0 text-info">{{ number_format($benchmark->transaction_target) }}</h4>
+                                
+                                @php
+                                    $branchTxnPercentage = $benchmark->transaction_target > 0 
+                                        ? min(($branchTransactionCount / $benchmark->transaction_target) * 100, 100) 
+                                        : 0;
+                                @endphp
+                                
+                                <div class="progress mt-2" style="height: 8px;">
+                                    <div class="progress-bar bg-info" style="width: {{ $branchTxnPercentage }}%;"></div>
+                                </div>
+                                <small class="text-muted">{{ number_format($branchTxnPercentage, 1) }}% achieved ({{ $branchTransactionCount }} transactions)</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center p-3 bg-light rounded">
+                                <small class="text-muted">Branch Total Sales</small>
+                                <h4 class="mb-0 text-success">RM {{ number_format($branchMonthlySales, 2) }}</h4>
+                                <div class="progress mt-2" style="height: 8px;">
+                                    <div class="progress-bar bg-success" style="width: 100%;"></div>
+                                </div>
+                                <small class="text-muted">This month so far</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @else
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> No benchmarks have been set by HQ Admin yet.
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <!-- Branch-Specific KPIs Section -->
     @if($kpis->count() > 0)
+    <div class="row mb-3">
+        <div class="col-12">
+            <h5><i class="bi bi-list-check"></i> Branch-Specific KPIs</h5>
+        </div>
+    </div>
         @foreach($kpis as $kpi)
         @php
             $currentProgress = 0;
@@ -193,7 +352,9 @@
             </div>
         </div>
         @endforeach
-    @else
+    @endif
+
+    @if($kpis->count() == 0 && (!isset($benchmark) || !$benchmark))
     <div class="row">
         <div class="col-12">
             <div class="alert alert-info">

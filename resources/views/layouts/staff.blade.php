@@ -325,14 +325,66 @@
                 <h5 class="mb-0">@yield('page-title', 'Dashboard')</h5>
             </div>
             <div class="d-flex align-items-center gap-3">
-                <!-- Notifications -->
-                <div class="notification-badge">
-                    <a href="{{ route('staff.alerts') }}" class="btn btn-light position-relative">
+                <!-- Notifications Dropdown -->
+                <div class="dropdown">
+                    <button class="btn btn-light position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-bell"></i>
                         @if(isset($unreadNotifications) && $unreadNotifications > 0)
-                        <span class="badge bg-danger">{{ $unreadNotifications }}</span>
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
+                            {{ $unreadNotifications > 99 ? '99+' : $unreadNotifications }}
+                        </span>
                         @endif
-                    </a>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow" style="width: 320px; max-height: 400px; overflow-y: auto;">
+                        <li class="dropdown-header d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-bell-fill text-warning"></i> Alerts</span>
+                            @if(isset($lowStockCount) && $lowStockCount > 0)
+                            <span class="badge bg-warning text-dark">{{ $lowStockCount }} low stock</span>
+                            @endif
+                        </li>
+                        <li><hr class="dropdown-divider my-1"></li>
+                        
+                        @if(isset($lowStockProducts) && $lowStockProducts->count() > 0)
+                            <li class="px-3 py-1">
+                                <small class="text-muted fw-bold"><i class="bi bi-box-seam"></i> Low Stock Items</small>
+                            </li>
+                            @foreach($lowStockProducts as $product)
+                            <li>
+                                <a class="dropdown-item py-2" href="{{ route('staff.inventory') }}">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="bi bi-exclamation-triangle-fill text-{{ $product->stock_quantity == 0 ? 'danger' : 'warning' }} me-2"></i>
+                                            <span class="fw-medium">{{ Str::limit($product->name, 20) }}</span>
+                                            <br>
+                                            <small class="text-muted ms-4">{{ $product->category->name ?? 'Uncategorized' }}</small>
+                                        </div>
+                                        <span class="badge bg-{{ $product->stock_quantity == 0 ? 'danger' : ($product->stock_quantity <= 3 ? 'warning text-dark' : 'secondary') }}">
+                                            {{ $product->stock_quantity }} left
+                                        </span>
+                                    </div>
+                                </a>
+                            </li>
+                            @endforeach
+                            @if($lowStockCount > 5)
+                            <li>
+                                <a class="dropdown-item text-center text-primary py-2" href="{{ route('staff.alerts') }}">
+                                    <small>View all {{ $lowStockCount }} items...</small>
+                                </a>
+                            </li>
+                            @endif
+                        @else
+                            <li class="px-3 py-3 text-center text-muted">
+                                <i class="bi bi-check-circle text-success"></i> No alerts
+                            </li>
+                        @endif
+                        
+                        <li><hr class="dropdown-divider my-1"></li>
+                        <li>
+                            <a class="dropdown-item text-center py-2" href="{{ route('staff.alerts') }}">
+                                <i class="bi bi-arrow-right-circle"></i> View All Alerts
+                            </a>
+                        </li>
+                    </ul>
                 </div>
                 
                 <!-- User Dropdown -->

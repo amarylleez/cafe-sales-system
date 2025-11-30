@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\User;
 use App\Models\KPI;
 use App\Models\Branch;
+use App\Models\Benchmark;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -211,7 +212,25 @@ class BranchManagerController extends Controller
     {
         $user = auth()->user();
         $branchId = $user->branch_id;
+        $branch = $user->branch;
         $currentMonth = Carbon::now();
+
+        // Get active benchmarks set by HQ Admin
+        $benchmark = Benchmark::where('is_active', true)->first();
+
+        // Calculate branch's monthly sales
+        $branchMonthlySales = DailySale::where('branch_id', $branchId)
+            ->whereMonth('sale_date', $currentMonth->month)
+            ->whereYear('sale_date', $currentMonth->year)
+            ->where('status', 'completed')
+            ->sum('total_amount');
+
+        // Calculate branch's transaction count
+        $branchTransactionCount = DailySale::where('branch_id', $branchId)
+            ->whereMonth('sale_date', $currentMonth->month)
+            ->whereYear('sale_date', $currentMonth->year)
+            ->where('status', 'completed')
+            ->count();
 
         // Get branch KPIs
         $kpis = KPI::where('branch_id', $branchId)
@@ -220,33 +239,48 @@ class BranchManagerController extends Controller
             ->with('progress')
             ->get();
 
-        // Get staff KPIs
+        // Get staff KPIs with benchmark comparison
         $staffKpis = User::where('branch_id', $branchId)
-            ->where('id', '!=', $user->id)
-            ->with(['branch'])
+            ->where('role', 'staff')
             ->get()
-            ->map(function($staff) use ($currentMonth) {
+            ->map(function($staff) use ($currentMonth, $benchmark) {
                 $staffSales = DailySale::where('staff_id', $staff->id)
                     ->whereMonth('sale_date', $currentMonth->month)
                     ->whereYear('sale_date', $currentMonth->year)
                     ->where('status', 'completed')
                     ->sum('total_amount');
 
+                $transactions = DailySale::where('staff_id', $staff->id)
+                    ->whereMonth('sale_date', $currentMonth->month)
+                    ->whereYear('sale_date', $currentMonth->year)
+                    ->where('status', 'completed')
+                    ->count();
+
+                // Calculate progress against staff target
+                $staffTarget = $benchmark ? $benchmark->staff_sales_target : 0;
+                $progress = $staffTarget > 0 ? min(($staffSales / $staffTarget) * 100, 100) : 0;
+
                 return [
                     'staff' => $staff,
                     'sales' => $staffSales,
-                    'transactions' => DailySale::where('staff_id', $staff->id)
-                        ->whereMonth('sale_date', $currentMonth->month)
-                        ->whereYear('sale_date', $currentMonth->year)
-                        ->where('status', 'completed')
-                        ->count()
+                    'transactions' => $transactions,
+                    'target' => $staffTarget,
+                    'progress' => $progress
                 ];
             });
 
         // Monthly sales comparison (last 6 months)
         $monthlySalesData = $this->getMonthlySalesComparison($branchId);
 
-        return view('branch-manager.kpi-benchmark', compact('kpis', 'staffKpis', 'monthlySalesData'));
+        return view('branch-manager.kpi-benchmark', compact(
+            'kpis', 
+            'staffKpis', 
+            'monthlySalesData', 
+            'benchmark',
+            'branch',
+            'branchMonthlySales',
+            'branchTransactionCount'
+        ));
     }
 
     /**

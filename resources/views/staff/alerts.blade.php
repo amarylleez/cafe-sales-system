@@ -19,8 +19,88 @@
         </div>
     </div>
 
-    @if($alerts->count() > 0)
-        @foreach($alerts as $alert)
+    @php
+        $hasAlerts = (isset($notifications) && $notifications->count() > 0) || (isset($lowStockProducts) && $lowStockProducts->count() > 0);
+    @endphp
+
+    @if($hasAlerts)
+        <!-- Low Stock Alerts Section -->
+        @if(isset($lowStockProducts) && $lowStockProducts->count() > 0)
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm border-warning">
+                    <div class="card-header bg-warning bg-opacity-25">
+                        <h6 class="mb-0">
+                            <i class="bi bi-box-seam text-warning"></i> Low Stock Alerts 
+                            <span class="badge bg-warning text-dark">{{ $lowStockProducts->count() }} items</span>
+                        </h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Category</th>
+                                        <th>Current Stock</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($lowStockProducts as $product)
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <i class="bi bi-exclamation-triangle-fill text-{{ $product->stock_quantity == 0 ? 'danger' : 'warning' }} me-2"></i>
+                                                <strong>{{ $product->name }}</strong>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-secondary">{{ $product->category->name ?? 'Uncategorized' }}</span>
+                                        </td>
+                                        <td>
+                                            @if($product->stock_quantity == 0)
+                                                <span class="badge bg-danger">Out of Stock</span>
+                                            @elseif($product->stock_quantity <= 3)
+                                                <span class="badge bg-danger">{{ $product->stock_quantity }} left</span>
+                                            @else
+                                                <span class="badge bg-warning text-dark">{{ $product->stock_quantity }} left</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @if($product->stock_quantity == 0)
+                                                <span class="text-danger fw-bold"><i class="bi bi-x-circle"></i> Critical</span>
+                                            @elseif($product->stock_quantity <= 3)
+                                                <span class="text-danger"><i class="bi bi-exclamation-circle"></i> Very Low</span>
+                                            @else
+                                                <span class="text-warning"><i class="bi bi-exclamation-triangle"></i> Low</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            <a href="{{ route('staff.inventory') }}" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-box-arrow-in-right"></i> View in Inventory
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
+
+        <!-- Regular Notifications Section -->
+        @if(isset($notifications) && $notifications->count() > 0)
+        <div class="row mb-3">
+            <div class="col-12">
+                <h6 class="text-muted mb-3"><i class="bi bi-megaphone"></i> Other Notifications</h6>
+            </div>
+        </div>
+        @foreach($notifications as $alert)
         <div class="row mb-3">
             <div class="col-12">
                 <div class="card shadow-sm {{ $alert->is_read ? '' : 'border-warning' }}">
@@ -99,13 +179,7 @@
             </div>
         </div>
         @endforeach
-
-        <!-- Pagination -->
-        <div class="row mt-4">
-            <div class="col-12">
-                {{ $alerts->links() }}
-            </div>
-        </div>
+        @endif
     @else
     <div class="row">
         <div class="col-12">
