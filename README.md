@@ -46,7 +46,7 @@ This system is designed for cafe businesses with multiple branches, providing ro
 
 - **Backend:** Laravel 12.x (PHP 8.4)
 - **Frontend:** Blade Templates, Bootstrap 5.3
-- **Database:** MySQL
+- **Database:** pgSQL
 - **Charts:** Chart.js 4.4
 - **PDF Generation:** barryvdh/laravel-dompdf
 - **Build Tool:** Vite
