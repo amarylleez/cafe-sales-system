@@ -686,23 +686,22 @@ class HQAdminController extends Controller
     {
         $request->validate([
             'monthly_benchmark' => 'required|numeric|min:0',
-            'transaction_benchmark' => 'required|integer|min:0',
             'staff_benchmark' => 'required|numeric|min:0'
         ]);
 
         // Deactivate old benchmarks
         Benchmark::where('is_active', true)->update(['is_active' => false]);
 
-        // Create new benchmark
+        // Create new benchmark - applied immediately
         Benchmark::create([
             'monthly_sales_target' => $request->monthly_benchmark,
-            'transaction_target' => $request->transaction_benchmark,
+            'transaction_target' => 0, // No longer used
             'staff_sales_target' => $request->staff_benchmark,
             'is_active' => true,
-            'effective_from' => Carbon::now()->startOfMonth()->addMonth()
+            'effective_from' => Carbon::now()
         ]);
 
-        return redirect()->route('hq-admin.kpi-benchmark')->with('success', 'Benchmarks updated successfully!');
+        return redirect()->route('hq-admin.kpi-benchmark')->with('success', 'Benchmarks updated successfully and applied immediately!');
     }
 
     /**

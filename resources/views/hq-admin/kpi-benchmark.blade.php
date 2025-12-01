@@ -250,8 +250,8 @@
                             <input type="number" class="form-control" name="staff_benchmark" step="0.01" value="{{ $staffBenchmark }}" required>
                         </div>
                     </div>
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i> These benchmarks will be applied company-wide starting next month.
+                    <div class="alert alert-success">
+                        <i class="bi bi-lightning-fill"></i> These benchmarks will be applied immediately across all branches.
                     </div>
                 </div>
                 <div class="modal-footer">
