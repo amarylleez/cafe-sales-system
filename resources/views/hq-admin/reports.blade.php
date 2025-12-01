@@ -8,7 +8,7 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="card shadow-sm">
-                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="card-header" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                     <h5 class="mb-0 text-white">
                         <i class="bi bi-file-earmark-text"></i> Unified Sales Reports
                     </h5>
@@ -29,9 +29,10 @@
                         <div class="col-md-3">
                             <label class="form-label">Date Range</label>
                             <select class="form-select" id="dateRange">
+                                <option value="" selected>All Time</option>
                                 <option value="today">Today</option>
                                 <option value="week">This Week</option>
-                                <option value="month" selected>This Month</option>
+                                <option value="month">This Month</option>
                                 <option value="custom">Custom Range</option>
                             </select>
                         </div>
@@ -84,7 +85,7 @@
     <!-- Summary Cards -->
     <div class="row g-4 mb-4">
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                 <div class="card-body text-white text-center">
                     <small class="opacity-75">Total Sales</small>
                     <h3 class="mb-0 mt-2">RM {{ number_format($reportSummary['totalSales'], 2) }}</h3>
@@ -92,7 +93,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                 <div class="card-body text-white text-center">
                     <small class="opacity-75">Total Reports</small>
                     <h3 class="mb-0 mt-2">{{ $reportSummary['totalReports'] }}</h3>
@@ -100,7 +101,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                 <div class="card-body text-white text-center">
                     <small class="opacity-75">Verified Reports</small>
                     <h3 class="mb-0 mt-2">{{ $reportSummary['verifiedReports'] }}</h3>
@@ -108,7 +109,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                 <div class="card-body text-white text-center">
                     <small class="opacity-75">Pending Verification</small>
                     <h3 class="mb-0 mt-2">{{ $reportSummary['pendingReports'] }}</h3>
@@ -147,7 +148,7 @@
                                     <td>{{ $report->branch->name }}</td>
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            <div class="user-avatar me-2" style="width: 30px; height: 30px; font-size: 0.9rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                                            <div class="user-avatar me-2" style="width: 30px; height: 30px; font-size: 0.9rem; background: linear-gradient(135deg, #D35400 0%, #E67E22 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
                                                 {{ substr($report->staff->name, 0, 1) }}
                                             </div>
                                             {{ $report->staff->name }}
@@ -340,13 +341,16 @@ function exportCSV() {
     const branch = document.getElementById('filterBranch').value;
     const status = document.getElementById('filterStatus').value;
     
-    const params = new URLSearchParams({
-        date_range: dateRange,
-        branch: branch,
-        status: status,
-        start_date: document.getElementById('startDate').value,
-        end_date: document.getElementById('endDate').value
-    });
+    const params = new URLSearchParams();
+    if (dateRange) params.append('date_range', dateRange);
+    if (branch) params.append('branch', branch);
+    if (status) params.append('status', status);
+    if (dateRange === 'custom') {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        if (startDate) params.append('start_date', startDate);
+        if (endDate) params.append('end_date', endDate);
+    }
     
     window.location.href = `/hq-admin/reports/export/csv?${params.toString()}`;
 }
@@ -357,13 +361,16 @@ function exportPDF() {
     const branch = document.getElementById('filterBranch').value;
     const status = document.getElementById('filterStatus').value;
     
-    const params = new URLSearchParams({
-        date_range: dateRange,
-        branch: branch,
-        status: status,
-        start_date: document.getElementById('startDate').value,
-        end_date: document.getElementById('endDate').value
-    });
+    const params = new URLSearchParams();
+    if (dateRange) params.append('date_range', dateRange);
+    if (branch) params.append('branch', branch);
+    if (status) params.append('status', status);
+    if (dateRange === 'custom') {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        if (startDate) params.append('start_date', startDate);
+        if (endDate) params.append('end_date', endDate);
+    }
     
     window.location.href = `/hq-admin/reports/export/pdf?${params.toString()}`;
 }
@@ -374,13 +381,16 @@ function applyFilter() {
     const branch = document.getElementById('filterBranch').value;
     const status = document.getElementById('filterStatus').value;
     
-    const params = new URLSearchParams({
-        date_range: dateRange,
-        branch: branch,
-        status: status,
-        start_date: document.getElementById('startDate').value,
-        end_date: document.getElementById('endDate').value
-    });
+    const params = new URLSearchParams();
+    if (dateRange) params.append('date_range', dateRange);
+    if (branch) params.append('branch', branch);
+    if (status) params.append('status', status);
+    if (dateRange === 'custom') {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        if (startDate) params.append('start_date', startDate);
+        if (endDate) params.append('end_date', endDate);
+    }
     
     window.location.href = `/hq-admin/reports?${params.toString()}`;
 }

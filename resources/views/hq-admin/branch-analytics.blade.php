@@ -1,26 +1,48 @@
-@extends('layouts.branch-manager')
+@extends('layouts.hq-admin')
 
-@section('page-title', 'Branch Manager Dashboard')
+@section('page-title', 'Branch Analytics - ' . $branch->name)
 
 @section('content')
 <div class="container-fluid">
-    <!-- Welcome Section -->
+    <!-- Header -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card shadow-sm">
+                <div class="card-header" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
+                    <h5 class="mb-0 text-white">
+                        <i class="bi bi-graph-up-arrow"></i> Branch Analytics
+                    </h5>
+                </div>
                 <div class="card-body">
-                    <h4 class="mb-1">Welcome, {{ auth()->user()->name }}!</h4>
-                    <p class="text-muted mb-0">
-                        <i class="bi bi-building"></i> Managing: {{ $branch->name }}
-                        <br>
-                        <small>{{ $branch->address }}</small>
-                    </p>
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h4 class="mb-1">{{ $branch->name }}</h4>
+                            <p class="text-muted mb-0">
+                                <i class="bi bi-geo-alt"></i> {{ $branch->address }}
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            @if($branchManager)
+                            <div class="d-flex align-items-center justify-content-end">
+                                <div class="text-end me-3">
+                                    <small class="text-muted d-block">Branch Manager</small>
+                                    <strong>{{ $branchManager->name }}</strong>
+                                </div>
+                                <div class="user-avatar" style="width: 50px; height: 50px; font-size: 1.2rem; background: linear-gradient(135deg, #D35400 0%, #E67E22 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                                    {{ substr($branchManager->name, 0, 1) }}
+                                </div>
+                            </div>
+                            @else
+                            <span class="badge bg-secondary">No Manager Assigned</span>
+                            @endif
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Sales This Week -->
+    <!-- Key Metrics Cards -->
     <div class="row g-4 mb-4">
         <div class="col-md-3">
             <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
@@ -37,7 +59,7 @@
                     <div class="mt-3">
                         <small>
                             <i class="bi bi-{{ $weekGrowth >= 0 ? 'arrow-up' : 'arrow-down' }}"></i>
-                            {{ number_format(abs($weekGrowth), 2) }}% from last week
+                            {{ number_format(abs($weekGrowth), 1) }}% from last week
                         </small>
                     </div>
                 </div>
@@ -102,7 +124,7 @@
         </div>
     </div>
 
-    <!-- Sales Trend Chart -->
+    <!-- Sales Trend & Sales by Category -->
     <div class="row mb-4">
         <div class="col-lg-8">
             <div class="card shadow-sm">
@@ -141,24 +163,48 @@
         </div>
     </div>
 
-    <!-- Quick Actions -->
+    <!-- Performance Summary -->
     <div class="row">
         <div class="col-md-6">
             <div class="card shadow-sm">
                 <div class="card-header bg-white">
-                    <h5 class="mb-0"><i class="bi bi-lightning"></i> Quick Actions</h5>
+                    <h5 class="mb-0"><i class="bi bi-speedometer2"></i> Performance Summary</h5>
                 </div>
                 <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <a href="{{ route('branch-manager.sales-report') }}" class="btn btn-outline-primary">
-                            <i class="bi bi-file-earmark-text"></i> View Sales Reports
-                        </a>
-                        <a href="{{ route('branch-manager.kpi-benchmark') }}" class="btn btn-outline-success">
-                            <i class="bi bi-graph-up"></i> Check KPI Progress
-                        </a>
-                        <a href="{{ route('branch-manager.team-overview') }}" class="btn btn-outline-info">
-                            <i class="bi bi-people"></i> Manage Team
-                        </a>
+                    @php
+                        $targetProgress = $monthlyTarget > 0 ? min(($monthSales / $monthlyTarget) * 100, 100) : 0;
+                    @endphp
+                    
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Monthly Target Progress</span>
+                            <strong>{{ number_format($targetProgress, 1) }}%</strong>
+                        </div>
+                        <div class="progress" style="height: 20px;">
+                            <div class="progress-bar bg-{{ $targetProgress >= 100 ? 'success' : ($targetProgress >= 50 ? 'info' : 'warning') }}" 
+                                 role="progressbar" 
+                                 style="width: {{ $targetProgress }}%">
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between mt-2">
+                            <small class="text-muted">RM {{ number_format($monthSales, 2) }}</small>
+                            <small class="text-muted">Target: RM {{ number_format($monthlyTarget, 2) }}</small>
+                        </div>
+                    </div>
+
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="border rounded p-3">
+                                <h4 class="text-primary mb-0">RM {{ number_format($totalTransactions > 0 ? $monthSales / $totalTransactions : 0, 2) }}</h4>
+                                <small class="text-muted">Avg. Transaction</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-3">
+                                <h4 class="text-success mb-0">RM {{ number_format($activeStaff > 0 ? $monthSales / $activeStaff : 0, 2) }}</h4>
+                                <small class="text-muted">Sales per Staff</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -167,24 +213,35 @@
         <div class="col-md-6">
             <div class="card shadow-sm">
                 <div class="card-header bg-white">
-                    <h5 class="mb-0"><i class="bi bi-exclamation-circle"></i> Alerts & Reminders</h5>
+                    <h5 class="mb-0"><i class="bi bi-info-circle"></i> Branch Information</h5>
                 </div>
                 <div class="card-body">
-                    @if($pendingReports > 0)
-                    <div class="alert alert-warning">
-                        <i class="bi bi-exclamation-triangle"></i> You have <strong>{{ $pendingReports }}</strong> pending sales report(s) to review.
-                    </div>
-                    @endif
-                    @if($lowStockItems > 0)
-                    <div class="alert alert-danger">
-                        <i class="bi bi-box-seam"></i> <strong>{{ $lowStockItems }}</strong> item(s) are running low on stock!
-                    </div>
-                    @endif
-                    @if($pendingReports == 0 && $lowStockItems == 0)
-                    <div class="alert alert-success">
-                        <i class="bi bi-check-circle"></i> All caught up! No pending tasks.
-                    </div>
-                    @endif
+                    <table class="table table-borderless">
+                        <tr>
+                            <td><i class="bi bi-building text-muted"></i> Branch Name</td>
+                            <td><strong>{{ $branch->name }}</strong></td>
+                        </tr>
+                        <tr>
+                            <td><i class="bi bi-geo-alt text-muted"></i> Address</td>
+                            <td>{{ $branch->address }}</td>
+                        </tr>
+                        <tr>
+                            <td><i class="bi bi-person text-muted"></i> Manager</td>
+                            <td>{{ $branchManager->name ?? 'Not Assigned' }}</td>
+                        </tr>
+                        <tr>
+                            <td><i class="bi bi-people text-muted"></i> Staff Count</td>
+                            <td>{{ $activeStaff }} members</td>
+                        </tr>
+                        <tr>
+                            <td><i class="bi bi-check-circle text-muted"></i> Status</td>
+                            <td>
+                                <span class="badge bg-{{ $branch->is_active ? 'success' : 'secondary' }}">
+                                    {{ $branch->is_active ? 'Active' : 'Inactive' }}
+                                </span>
+                            </td>
+                        </tr>
+                    </table>
                 </div>
             </div>
         </div>
@@ -195,7 +252,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Sales Trend Chart
+    // Sales Trend Chart (Last 7 Days)
     const salesTrendData = @json($salesTrendData);
     const trendCtx = document.getElementById('salesTrendChart');
     
@@ -265,7 +322,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Monthly Sales Performance Chart (Own Branch Only)
+    // Monthly Sales Performance Chart
     const monthlySalesData = @json($monthlySalesData);
     const monthlyCtx = document.getElementById('monthlySalesChart');
     
@@ -333,3 +390,4 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 @endpush
 @endsection
+

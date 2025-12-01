@@ -1,0 +1,24 @@
+/* 
+ * Cafe Sales System - Food Kiosk Theme
+ * Color Palette:
+ * - Primary: #D35400 (Burnt Orange)
+ * - Secondary: #E67E22 (Carrot Orange)
+ * - Accent: #F39C12 (Sunflower Yellow)
+ * - Dark: #2C3E50 (Dark Blue-Gray)
+ * - Light: #FDF6E3 (Cream)
+ */
+
+:root {
+    --color-primary: #D35400;
+    --color-secondary: #E67E22;
+    --color-accent: #F39C12;
+    --color-dark: #2C3E50;
+    --color-light: #FDF6E3;
+    --color-white: #FFFFFF;
+    
+    /* Semantic colors */
+    --color-success: #27AE60;
+    --color-warning: #F39C12;
+    --color-danger: #E74C3C;
+    --color-info: #3498DB;
+}

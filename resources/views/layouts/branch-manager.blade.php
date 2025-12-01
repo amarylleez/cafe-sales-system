@@ -17,6 +17,11 @@
         :root {
             --sidebar-width: 250px;
             --sidebar-collapsed-width: 80px;
+            --color-primary: #D35400;
+            --color-secondary: #E67E22;
+            --color-accent: #F39C12;
+            --color-dark: #2C3E50;
+            --color-light: #FDF6E3;
         }
         
         * {
@@ -45,7 +50,7 @@
             left: 0;
             height: 100vh;
             width: var(--sidebar-width);
-            background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(180deg, #2C3E50 0%, #1a252f 100%);
             transition: width 0.3s ease;
             z-index: 1000;
             overflow-x: hidden;
@@ -156,7 +161,7 @@
             margin-left: var(--sidebar-width);
             transition: margin-left 0.3s ease;
             min-height: 100vh;
-            background: #f8f9fa;
+            background: var(--color-light);
             width: calc(100% - var(--sidebar-width));
             max-width: 100vw;
             overflow-x: hidden;
@@ -204,7 +209,7 @@
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -306,6 +311,15 @@
                 </a>
             </li>
             <li class="sidebar-menu-item">
+                <a href="{{ route('branch-manager.alerts') }}" class="sidebar-menu-link {{ request()->routeIs('branch-manager.alerts') ? 'active' : '' }}">
+                    <i class="bi bi-bell sidebar-menu-icon"></i>
+                    <span class="sidebar-menu-text">Alerts</span>
+                    @if(isset($alertsCount) && $alertsCount > 0)
+                    <span class="badge bg-danger ms-auto">{{ $alertsCount }}</span>
+                    @endif
+                </a>
+            </li>
+            <li class="sidebar-menu-item">
                 <a href="{{ route('branch-manager.inventory') }}" class="sidebar-menu-link {{ request()->routeIs('branch-manager.inventory') ? 'active' : '' }}">
                     <i class="bi bi-box-seam sidebar-menu-icon"></i>
                     <span class="sidebar-menu-text">Inventory</span>
@@ -322,14 +336,81 @@
                 <h5 class="mb-0">@yield('page-title', 'Dashboard')</h5>
             </div>
             <div class="d-flex align-items-center gap-3">
-                <!-- Notifications -->
-                <div class="notification-badge">
-                    <a href="#" class="btn btn-light position-relative">
+                <!-- Notifications Dropdown -->
+                <div class="dropdown">
+                    <button class="btn btn-light position-relative" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="bi bi-bell"></i>
-                        @if(isset($unreadNotifications) && $unreadNotifications > 0)
-                        <span class="badge bg-danger">{{ $unreadNotifications }}</span>
+                        @if(isset($alertsCount) && $alertsCount > 0)
+                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="font-size: 0.65rem;">
+                            {{ $alertsCount > 99 ? '99+' : $alertsCount }}
+                        </span>
                         @endif
-                    </a>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow" style="width: 320px; max-height: 400px; overflow-y: auto;">
+                        <li class="dropdown-header d-flex justify-content-between align-items-center">
+                            <span><i class="bi bi-bell-fill text-warning"></i> Alerts</span>
+                            @if(isset($lowStockCount) && $lowStockCount > 0)
+                            <span class="badge bg-warning text-dark">{{ $lowStockCount }} low stock</span>
+                            @endif
+                        </li>
+                        <li><hr class="dropdown-divider my-1"></li>
+                        
+                        @if(isset($pendingReportsCount) && $pendingReportsCount > 0)
+                        <li>
+                            <a class="dropdown-item py-2" href="{{ route('branch-manager.sales-report') }}?status=pending">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="bi bi-file-earmark-text text-info me-2"></i>
+                                        <span class="fw-medium">Pending Reports</span>
+                                    </div>
+                                    <span class="badge bg-info">{{ $pendingReportsCount }}</span>
+                                </div>
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider my-1"></li>
+                        @endif
+                        
+                        @if(isset($lowStockProducts) && $lowStockProducts->count() > 0)
+                            <li class="px-3 py-1">
+                                <small class="text-muted fw-bold"><i class="bi bi-box-seam"></i> Low Stock Items</small>
+                            </li>
+                            @foreach($lowStockProducts->take(5) as $product)
+                            <li>
+                                <a class="dropdown-item py-2" href="{{ route('branch-manager.inventory') }}">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="bi bi-exclamation-triangle-fill text-{{ $product->stock_quantity == 0 ? 'danger' : 'warning' }} me-2"></i>
+                                            <span class="fw-medium">{{ Str::limit($product->name, 20) }}</span>
+                                            <br>
+                                            <small class="text-muted ms-4">{{ $product->category->name ?? 'Uncategorized' }}</small>
+                                        </div>
+                                        <span class="badge bg-{{ $product->stock_quantity == 0 ? 'danger' : ($product->stock_quantity <= 3 ? 'warning text-dark' : 'secondary') }}">
+                                            {{ $product->stock_quantity }} left
+                                        </span>
+                                    </div>
+                                </a>
+                            </li>
+                            @endforeach
+                            @if($lowStockCount > 5)
+                            <li>
+                                <a class="dropdown-item text-center text-primary py-2" href="{{ route('branch-manager.alerts') }}">
+                                    <small>View all {{ $lowStockCount }} items...</small>
+                                </a>
+                            </li>
+                            @endif
+                        @elseif(!isset($pendingReportsCount) || $pendingReportsCount == 0)
+                            <li class="px-3 py-3 text-center text-muted">
+                                <i class="bi bi-check-circle text-success"></i> No alerts
+                            </li>
+                        @endif
+                        
+                        <li><hr class="dropdown-divider my-1"></li>
+                        <li>
+                            <a class="dropdown-item text-center py-2" href="{{ route('branch-manager.alerts') }}">
+                                <i class="bi bi-arrow-right-circle"></i> View All Alerts
+                            </a>
+                        </li>
+                    </ul>
                 </div>
                 
                 <!-- User Dropdown -->
@@ -345,8 +426,6 @@
                         <i class="bi bi-chevron-down"></i>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="{{ route('profile.edit') }}"><i class="bi bi-gear me-2"></i>Settings</a></li>
-                        <li><hr class="dropdown-divider"></li>
                         <li>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf

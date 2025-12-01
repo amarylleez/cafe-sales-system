@@ -1,4 +1,4 @@
-@extends('layouts.staff')
+@extends('layouts.branch-manager')
 
 @section('page-title', 'Alerts & Notifications')
 
@@ -13,17 +13,41 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <p class="mb-0">Stay updated with important notifications from branch managers and system alerts.</p>
+                    <p class="mb-0">Stay updated with important notifications, low stock alerts, and pending approvals.</p>
                 </div>
             </div>
         </div>
     </div>
 
     @php
-        $hasAlerts = (isset($notifications) && $notifications->count() > 0) || (isset($lowStockProducts) && $lowStockProducts->count() > 0);
+        $hasAlerts = (isset($notifications) && $notifications->count() > 0) || 
+                     (isset($lowStockProducts) && $lowStockProducts->count() > 0) ||
+                     (isset($pendingReports) && $pendingReports > 0);
     @endphp
 
     @if($hasAlerts)
+        <!-- Pending Reports Alert -->
+        @if(isset($pendingReports) && $pendingReports > 0)
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card shadow-sm border-info">
+                    <div class="card-header bg-info bg-opacity-25">
+                        <h6 class="mb-0">
+                            <i class="bi bi-file-earmark-text text-info"></i> Pending Reports
+                            <span class="badge bg-info">{{ $pendingReports }} awaiting approval</span>
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-2">You have <strong>{{ $pendingReports }}</strong> sales reports pending your approval.</p>
+                        <a href="{{ route('branch-manager.sales-report') }}?status=pending" class="btn btn-info btn-sm">
+                            <i class="bi bi-arrow-right"></i> Review Pending Reports
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        @endif
+
         <!-- Low Stock Alerts Section -->
         @if(isset($lowStockProducts) && $lowStockProducts->count() > 0)
         <div class="row mb-4">
@@ -78,7 +102,7 @@
                                             @endif
                                         </td>
                                         <td>
-                                            <a href="{{ route('staff.inventory') }}" class="btn btn-sm btn-outline-primary">
+                                            <a href="{{ route('branch-manager.inventory') }}" class="btn btn-sm btn-outline-primary">
                                                 <i class="bi bi-box-arrow-in-right"></i> View in Inventory
                                             </a>
                                         </td>
@@ -184,7 +208,7 @@
     <div class="row">
         <div class="col-12">
             <div class="alert alert-success">
-                <i class="bi bi-check-circle"></i> No alerts at the moment. Keep up the good work!
+                <i class="bi bi-check-circle"></i> No alerts at the moment. Everything is running smoothly!
             </div>
         </div>
     </div>
@@ -198,7 +222,7 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', function() {
             const alertId = this.dataset.id;
             
-            fetch(`/staff/notifications/${alertId}/mark-read`, {
+            fetch(`/branch-manager/notifications/${alertId}/mark-read`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -218,3 +242,4 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 @endpush
 @endsection
+

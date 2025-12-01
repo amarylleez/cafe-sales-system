@@ -10,6 +10,7 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Models\Notification;
 use App\Models\Benchmark;
+use App\Models\BranchStock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -228,8 +229,8 @@ class StaffController extends Controller
                 'payment_method' => $request->payment_method,
                 'payment_details' => $request->payment_details,
                 'notes' => $request->notes,
-                'status' => 'completed',
-                'completed_at' => now(),
+                'status' => 'pending',
+                'completed_at' => null,
             ]);
 
             // Create sale items and reduce stock
@@ -248,24 +249,23 @@ class StaffController extends Controller
                     'total' => $total,
                 ]);
                 
-                // Reduce stock
-                $product = Product::find($item['product_id']);
-                if ($product) {
-                    $product->stock_quantity = max(0, $product->stock_quantity - $item['quantity']);
-                    if ($product->stock_quantity <= 0) {
-                        $product->is_available = false;
-                    }
-                    $product->save();
-                    
-                    // Log stock reduction
-                    \App\Models\StockLog::create([
-                        'product_id' => $product->id,
-                        'user_id' => auth()->id(),
-                        'quantity' => $item['quantity'],
-                        'type' => 'remove',
-                        'notes' => 'Sold via sales transaction #' . $sale->transaction_id,
-                    ]);
+                // Reduce stock for this branch
+                $branchStock = BranchStock::getOrCreate($branchId, $item['product_id']);
+                $branchStock->stock_quantity = max(0, $branchStock->stock_quantity - $item['quantity']);
+                if ($branchStock->stock_quantity <= 0) {
+                    $branchStock->is_available = false;
                 }
+                $branchStock->save();
+                
+                // Log stock reduction
+                \App\Models\StockLog::create([
+                    'product_id' => $item['product_id'],
+                    'branch_id' => $branchId,
+                    'user_id' => auth()->id(),
+                    'quantity' => $item['quantity'],
+                    'type' => 'remove',
+                    'notes' => 'Sold via sales transaction #' . $sale->transaction_id,
+                ]);
             }
 
             // Update KPI progress
@@ -495,6 +495,7 @@ class StaffController extends Controller
     public function alerts()
     {
         $user = auth()->user();
+        $branchId = $user->branch_id;
 
         // Get regular notifications
         $notifications = Notification::where('user_id', $user->id)
@@ -502,12 +503,20 @@ class StaffController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Get low stock products (stock < 10) - products are global, not branch-specific
-        $lowStockProducts = Product::with('category')
+        // Get low stock products for THIS branch only
+        $lowStockProducts = BranchStock::with(['product.category'])
+            ->where('branch_id', $branchId)
             ->where('stock_quantity', '<', 10)
             ->where('is_available', true)
             ->orderBy('stock_quantity', 'asc')
-            ->get();
+            ->get()
+            ->map(function ($stock) {
+                // Attach stock info to product for easy access in view
+                $product = $stock->product;
+                $product->stock_quantity = $stock->stock_quantity;
+                $product->is_available = $stock->is_available;
+                return $product;
+            });
 
         return view('staff.alerts', compact('notifications', 'lowStockProducts'));
     }
@@ -519,9 +528,35 @@ class StaffController extends Controller
      */
     public function inventory()
     {
+        $user = auth()->user();
+        $branchId = $user->branch_id;
+        
+        // Get products with branch-specific stock
         $products = Product::with('category')
             ->orderBy('name')
-            ->paginate(20);
+            ->get()
+            ->map(function ($product) use ($branchId) {
+                $branchStock = BranchStock::where('branch_id', $branchId)
+                    ->where('product_id', $product->id)
+                    ->first();
+                
+                $product->stock_quantity = $branchStock ? $branchStock->stock_quantity : 0;
+                $product->is_available = $branchStock ? $branchStock->is_available : true;
+                $product->branch_stock_id = $branchStock ? $branchStock->id : null;
+                
+                return $product;
+            });
+        
+        // Paginate manually
+        $page = request()->get('page', 1);
+        $perPage = 20;
+        $products = new \Illuminate\Pagination\LengthAwarePaginator(
+            $products->forPage($page, $perPage),
+            $products->count(),
+            $perPage,
+            $page,
+            ['path' => request()->url()]
+        );
 
         $categories = Category::all();
 
@@ -529,18 +564,22 @@ class StaffController extends Controller
     }
 
     /**
-     * Update product availability
+     * Update product availability for this branch
      */
     public function updateProductAvailability(Request $request, $id)
     {
         try {
-            $product = Product::findOrFail($id);
-            $product->is_available = $request->boolean('is_available');
-            $product->save();
+            $user = auth()->user();
+            $branchId = $user->branch_id;
+            
+            // Get or create branch stock
+            $branchStock = BranchStock::getOrCreate($branchId, $id);
+            $branchStock->is_available = $request->boolean('is_available');
+            $branchStock->save();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Product availability updated',
+                'message' => 'Product availability updated for your branch',
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -555,14 +594,31 @@ class StaffController extends Controller
      */
     public function stock()
     {
-        $products = Product::with('category')->orderBy('name')->get();
+        $user = auth()->user();
+        $branchId = $user->branch_id;
+        
+        // Get products with branch-specific stock
+        $products = Product::with('category')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($product) use ($branchId) {
+                $branchStock = BranchStock::where('branch_id', $branchId)
+                    ->where('product_id', $product->id)
+                    ->first();
+                
+                $product->stock_quantity = $branchStock ? $branchStock->stock_quantity : 0;
+                $product->is_available = $branchStock ? $branchStock->is_available : true;
+                
+                return $product;
+            });
+        
         $categories = Category::orderBy('name')->get();
 
         return view('staff.stock', compact('products', 'categories'));
     }
 
     /**
-     * Add stock to a product
+     * Add stock to a product for this branch
      */
     public function addStock(Request $request, $id)
     {
@@ -572,13 +628,18 @@ class StaffController extends Controller
                 'notes' => 'nullable|string|max:255',
             ]);
 
-            $product = Product::findOrFail($id);
-            $product->stock_quantity += $request->quantity;
-            $product->save();
+            $user = auth()->user();
+            $branchId = $user->branch_id;
+            
+            // Get or create branch stock
+            $branchStock = BranchStock::getOrCreate($branchId, $id);
+            $branchStock->stock_quantity += $request->quantity;
+            $branchStock->save();
 
             // Log the stock addition
             \App\Models\StockLog::create([
-                'product_id' => $product->id,
+                'product_id' => $id,
+                'branch_id' => $branchId,
                 'user_id' => auth()->id(),
                 'quantity' => $request->quantity,
                 'type' => 'add',
@@ -588,7 +649,7 @@ class StaffController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Stock added successfully',
-                'new_quantity' => $product->stock_quantity,
+                'new_quantity' => $branchStock->stock_quantity,
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -599,7 +660,7 @@ class StaffController extends Controller
     }
 
     /**
-     * Adjust stock (add or remove)
+     * Adjust stock (add or remove) for this branch
      */
     public function adjustStock(Request $request, $id)
     {
@@ -609,25 +670,30 @@ class StaffController extends Controller
                 'type' => 'required|in:add,remove',
             ]);
 
-            $product = Product::findOrFail($id);
+            $user = auth()->user();
+            $branchId = $user->branch_id;
+            
+            // Get or create branch stock
+            $branchStock = BranchStock::getOrCreate($branchId, $id);
             
             if ($request->type === 'add') {
-                $product->stock_quantity += $request->quantity;
+                $branchStock->stock_quantity += $request->quantity;
             } else {
-                if ($product->stock_quantity < $request->quantity) {
+                if ($branchStock->stock_quantity < $request->quantity) {
                     return response()->json([
                         'success' => false,
                         'message' => 'Cannot remove more than current stock',
                     ], 400);
                 }
-                $product->stock_quantity -= $request->quantity;
+                $branchStock->stock_quantity -= $request->quantity;
             }
             
-            $product->save();
+            $branchStock->save();
 
             // Log the stock change
             \App\Models\StockLog::create([
-                'product_id' => $product->id,
+                'product_id' => $id,
+                'branch_id' => $branchId,
                 'user_id' => auth()->id(),
                 'quantity' => $request->quantity,
                 'type' => $request->type,
@@ -637,7 +703,7 @@ class StaffController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Stock adjusted successfully',
-                'new_quantity' => $product->stock_quantity,
+                'new_quantity' => $branchStock->stock_quantity,
             ]);
         } catch (\Exception $e) {
             return response()->json([

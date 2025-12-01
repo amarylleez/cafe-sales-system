@@ -8,7 +8,7 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="card shadow-sm">
-                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="card-header" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="mb-0 text-white">
                             <i class="bi bi-graph-up"></i> KPI & Benchmark Management
@@ -27,8 +27,8 @@
 
     <!-- Current Benchmarks -->
     <div class="row g-4 mb-4">
-        <div class="col-md-4">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+        <div class="col-md-6">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                 <div class="card-body text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -46,27 +46,8 @@
             </div>
         </div>
 
-        <div class="col-md-4">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
-                <div class="card-body text-white">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <small class="opacity-75">Transaction Target</small>
-                            <h3 class="mb-0 mt-2">{{ number_format($transactionBenchmark) }}</h3>
-                        </div>
-                        <div>
-                            <i class="bi bi-receipt" style="font-size: 2.5rem; opacity: 0.5;"></i>
-                        </div>
-                    </div>
-                    <div class="mt-3">
-                        <small>Monthly Per Branch</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-4">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+        <div class="col-md-6">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                 <div class="card-body text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -97,69 +78,52 @@
                         @foreach($branchKPIs as $branch)
                         @php
                             $salesProgress = $monthlyBenchmark > 0 ? ($branch->currentSales / $monthlyBenchmark) * 100 : 0;
-                            $transactionProgress = $transactionBenchmark > 0 ? ($branch->transactions / $transactionBenchmark) * 100 : 0;
-                            $overallProgress = ($salesProgress + $transactionProgress) / 2;
                         @endphp
                         <div class="col-md-4">
-                            <div class="card h-100 border-{{ $overallProgress >= 100 ? 'success' : ($overallProgress >= 75 ? 'info' : 'warning') }}">
-                                <div class="card-header bg-{{ $overallProgress >= 100 ? 'success' : ($overallProgress >= 75 ? 'info' : 'warning') }} text-white">
+                            <div class="card h-100 border-{{ $salesProgress >= 100 ? 'success' : ($salesProgress >= 75 ? 'info' : 'warning') }}">
+                                <div class="card-header bg-{{ $salesProgress >= 100 ? 'success' : ($salesProgress >= 75 ? 'info' : 'warning') }} text-white">
                                     <h6 class="mb-0">{{ $branch->name }}</h6>
                                 </div>
                                 <div class="card-body">
-                                    <div class="text-center mb-3">
+                                    <div class="text-center mb-4">
                                         <div class="position-relative d-inline-block">
-                                            <svg width="120" height="120">
-                                                <circle cx="60" cy="60" r="50" fill="none" stroke="#e9ecef" stroke-width="10"/>
-                                                <circle cx="60" cy="60" r="50" fill="none" 
-                                                    stroke="{{ $overallProgress >= 100 ? '#28a745' : ($overallProgress >= 75 ? '#17a2b8' : '#ffc107') }}" 
-                                                    stroke-width="10"
-                                                    stroke-dasharray="{{ 2 * 3.14159 * 50 }}"
-                                                    stroke-dashoffset="{{ 2 * 3.14159 * 50 * (1 - $overallProgress / 100) }}"
-                                                    transform="rotate(-90 60 60)"
+                                            <svg width="140" height="140">
+                                                <circle cx="70" cy="70" r="60" fill="none" stroke="#e9ecef" stroke-width="12"/>
+                                                <circle cx="70" cy="70" r="60" fill="none" 
+                                                    stroke="{{ $salesProgress >= 100 ? '#28a745' : ($salesProgress >= 75 ? '#17a2b8' : '#ffc107') }}" 
+                                                    stroke-width="12"
+                                                    stroke-dasharray="{{ 2 * 3.14159 * 60 }}"
+                                                    stroke-dashoffset="{{ 2 * 3.14159 * 60 * (1 - min($salesProgress, 100) / 100) }}"
+                                                    transform="rotate(-90 70 70)"
                                                     stroke-linecap="round"/>
                                             </svg>
                                             <div class="position-absolute top-50 start-50 translate-middle">
-                                                <h4 class="mb-0">{{ number_format($overallProgress, 1) }}%</h4>
-                                                <small class="text-muted">Overall</small>
+                                                <h3 class="mb-0 fw-bold">{{ number_format($salesProgress, 1) }}%</h3>
+                                                <small class="text-muted">Sales Target</small>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div class="mb-3">
-                                        <div class="d-flex justify-content-between mb-1">
-                                            <small>Sales Target</small>
-                                            <small class="text-primary">{{ number_format($salesProgress, 1) }}%</small>
-                                        </div>
-                                        <div class="progress" style="height: 8px;">
-                                            <div class="progress-bar bg-primary" style="width: {{ min($salesProgress, 100) }}%"></div>
-                                        </div>
-                                        <div class="d-flex justify-content-between mt-1">
-                                            <small class="text-muted">RM {{ number_format($branch->currentSales, 2) }}</small>
-                                            <small class="text-muted">RM {{ number_format($monthlyBenchmark, 2) }}</small>
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-3">
-                                        <div class="d-flex justify-content-between mb-1">
-                                            <small>Transaction Target</small>
-                                            <small class="text-info">{{ number_format($transactionProgress, 1) }}%</small>
-                                        </div>
-                                        <div class="progress" style="height: 8px;">
-                                            <div class="progress-bar bg-info" style="width: {{ min($transactionProgress, 100) }}%"></div>
-                                        </div>
-                                        <div class="d-flex justify-content-between mt-1">
-                                            <small class="text-muted">{{ number_format($branch->transactions) }}</small>
-                                            <small class="text-muted">{{ number_format($transactionBenchmark) }}</small>
+                                    <div class="text-center mb-3">
+                                        <div class="row">
+                                            <div class="col-6">
+                                                <small class="text-muted d-block">Current Sales</small>
+                                                <strong class="text-primary">RM {{ number_format($branch->currentSales, 2) }}</strong>
+                                            </div>
+                                            <div class="col-6">
+                                                <small class="text-muted d-block">Target</small>
+                                                <strong>RM {{ number_format($monthlyBenchmark, 2) }}</strong>
+                                            </div>
                                         </div>
                                     </div>
 
                                     <div class="card bg-light">
-                                        <div class="card-body p-2">
+                                        <div class="card-body p-2 text-center">
                                             <small class="text-muted">Status:</small>
-                                            <strong class="text-{{ $overallProgress >= 100 ? 'success' : ($overallProgress >= 75 ? 'info' : 'warning') }}">
-                                                @if($overallProgress >= 100)
+                                            <strong class="text-{{ $salesProgress >= 100 ? 'success' : ($salesProgress >= 75 ? 'info' : 'warning') }}">
+                                                @if($salesProgress >= 100)
                                                 <i class="bi bi-check-circle-fill"></i> Target Achieved
-                                                @elseif($overallProgress >= 75)
+                                                @elseif($salesProgress >= 75)
                                                 <i class="bi bi-info-circle-fill"></i> On Track
                                                 @else
                                                 <i class="bi bi-exclamation-circle-fill"></i> Needs Attention
@@ -219,7 +183,7 @@
                                 <tr>
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            <div class="user-avatar me-2" style="width: 35px; height: 35px; font-size: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                                            <div class="user-avatar me-2" style="width: 35px; height: 35px; font-size: 1rem; background: linear-gradient(135deg, #D35400 0%, #E67E22 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
                                                 {{ substr($staff->name, 0, 1) }}
                                             </div>
                                             {{ $staff->name }}
@@ -280,10 +244,6 @@
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Monthly Transaction Target (Per Branch) <span class="text-danger">*</span></label>
-                        <input type="number" class="form-control" name="transaction_benchmark" value="{{ $transactionBenchmark }}" required>
-                    </div>
-                    <div class="mb-3">
                         <label class="form-label">Monthly Sales Target (Per Staff) <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <span class="input-group-text">RM</span>
@@ -320,15 +280,15 @@ document.addEventListener('DOMContentLoaded', function() {
             datasets: [{
                 label: 'Current Sales (RM)',
                 data: staffKPIData.sales,
-                backgroundColor: 'rgba(102, 126, 234, 0.8)',
-                borderColor: '#667eea',
+                backgroundColor: 'rgba(145, 118, 110, 0.8)',
+                borderColor: '#D35400',
                 borderWidth: 2,
                 borderRadius: 5
             }, {
                 label: 'Target (RM)',
                 data: staffKPIData.targets,
-                backgroundColor: 'rgba(240, 147, 251, 0.3)',
-                borderColor: '#f093fb',
+                backgroundColor: 'rgba(183, 167, 169, 0.3)',
+                borderColor: '#E67E22',
                 borderWidth: 2,
                 borderRadius: 5,
                 borderDash: [5, 5]

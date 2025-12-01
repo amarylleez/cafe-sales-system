@@ -23,7 +23,7 @@
     <!-- Sales This Week -->
     <div class="row g-4 mb-4">
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                 <div class="card-body text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -45,7 +45,7 @@
         </div>
 
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                 <div class="card-body text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -64,7 +64,7 @@
         </div>
 
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                 <div class="card-body text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -83,7 +83,7 @@
         </div>
 
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                 <div class="card-body text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -206,8 +206,8 @@ document.addEventListener('DOMContentLoaded', function() {
             datasets: [{
                 label: 'Daily Sales (RM)',
                 data: salesTrendData.values,
-                borderColor: '#667eea',
-                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                borderColor: '#D35400',
+                backgroundColor: 'rgba(145, 118, 110, 0.1)',
                 tension: 0.4,
                 fill: true
             }]
@@ -244,11 +244,11 @@ document.addEventListener('DOMContentLoaded', function() {
             datasets: [{
                 data: categoryData.values,
                 backgroundColor: [
-                    '#667eea',
-                    '#f093fb',
-                    '#4facfe',
-                    '#fa709a',
-                    '#fee140'
+                    '#D35400',
+                    '#E67E22',
+                    '#FDF6E3',
+                    '#C0392B',
+                    '#F39C12'
                 ]
             }]
         },

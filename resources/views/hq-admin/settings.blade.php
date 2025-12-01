@@ -1,6 +1,6 @@
-@extends('layouts.staff')
+@extends('layouts.hq-admin')
 
-@section('page-title', 'Profile Settings')
+@section('page-title', 'Settings')
 
 @section('content')
 <div class="container-fluid">
@@ -43,7 +43,7 @@
                     <small class="text-muted">Update your account's profile information and email address.</small>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ route('profile.update') }}">
+                    <form method="POST" action="{{ route('hq-admin.settings.profile') }}">
                         @csrf
                         @method('PATCH')
                         
@@ -63,24 +63,12 @@
                             @error('email')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
-                            @if($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && !$user->hasVerifiedEmail())
-                            <div class="alert alert-warning mt-2">
-                                Your email address is unverified.
-                                <form method="POST" action="{{ route('verification.send') }}" class="d-inline">
-                                    @csrf
-                                    <button type="submit" class="btn btn-link p-0">Click here to re-send verification email.</button>
-                                </form>
-                            </div>
-                            @endif
                         </div>
 
-                        @if($user->branch)
                         <div class="mb-3">
-                            <label class="form-label">Branch</label>
-                            <input type="text" class="form-control" value="{{ $user->branch->name }}" disabled>
-                            <small class="text-muted">Contact your administrator to change your branch.</small>
+                            <label class="form-label">Role</label>
+                            <input type="text" class="form-control" value="HQ Administrator" disabled>
                         </div>
-                        @endif
 
                         <button type="submit" class="btn btn-primary">
                             <i class="bi bi-check-circle"></i> Save Changes
@@ -100,11 +88,7 @@
                     </div>
                     <h5>{{ $user->name }}</h5>
                     <p class="text-muted mb-2">{{ $user->email }}</p>
-                    @if($user->branch)
-                    <p class="text-muted small mb-0">
-                        <i class="bi bi-building"></i> {{ $user->branch->name }}
-                    </p>
-                    @endif
+                    <span class="badge bg-primary">HQ Administrator</span>
                 </div>
             </div>
         </div>
@@ -119,24 +103,24 @@
                     <small class="text-muted">Ensure your account is using a long, random password to stay secure.</small>
                 </div>
                 <div class="card-body">
-                    <form method="POST" action="{{ route('password.update') }}">
+                    <form method="POST" action="{{ route('hq-admin.settings.password') }}">
                         @csrf
                         @method('PUT')
                         
                         <div class="mb-3">
                             <label for="current_password" class="form-label">Current Password</label>
-                            <input type="password" class="form-control @error('current_password', 'updatePassword') is-invalid @enderror" 
+                            <input type="password" class="form-control @error('current_password') is-invalid @enderror" 
                                    id="current_password" name="current_password" required>
-                            @error('current_password', 'updatePassword')
+                            @error('current_password')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                         </div>
 
                         <div class="mb-3">
                             <label for="password" class="form-label">New Password</label>
-                            <input type="password" class="form-control @error('password', 'updatePassword') is-invalid @enderror" 
+                            <input type="password" class="form-control @error('password') is-invalid @enderror" 
                                    id="password" name="password" required>
-                            @error('password', 'updatePassword')
+                            @error('password')
                             <div class="invalid-feedback">{{ $message }}</div>
                             @enderror
                             <small class="text-muted">Minimum 8 characters</small>
@@ -156,59 +140,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Delete Account -->
-    <div class="row">
-        <div class="col-lg-8">
-            <div class="card shadow-sm border-danger">
-                <div class="card-header bg-white border-bottom">
-                    <h6 class="mb-0 text-danger"><i class="bi bi-exclamation-triangle"></i> Delete Account</h6>
-                    <small class="text-muted">Once your account is deleted, all of its resources and data will be permanently deleted. Before deleting your account, please download any data or information that you wish to retain.</small>
-                </div>
-                <div class="card-body">
-                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
-                        <i class="bi bi-trash"></i> Delete Account
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Delete Account Confirmation Modal -->
-<div class="modal fade" id="deleteAccountModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header border-0">
-                <h5 class="modal-title text-danger">
-                    <i class="bi bi-exclamation-triangle"></i> Confirm Account Deletion
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>Are you sure you want to delete your account? This action cannot be undone.</p>
-                <form method="POST" action="{{ route('profile.destroy') }}" id="deleteAccountForm">
-                    @csrf
-                    @method('DELETE')
-                    
-                    <div class="mb-3">
-                        <label for="delete_password" class="form-label">Password</label>
-                        <input type="password" class="form-control @error('password', 'userDeletion') is-invalid @enderror" 
-                               id="delete_password" name="password" 
-                               placeholder="Enter your password to confirm" required>
-                        @error('password', 'userDeletion')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                        @enderror
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer border-0">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" form="deleteAccountForm" class="btn btn-danger">
-                    Delete Account
-                </button>
-            </div>
-        </div>
-    </div>
 </div>
 @endsection
+

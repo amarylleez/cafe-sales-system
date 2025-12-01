@@ -44,7 +44,7 @@
         </div>
         
         <div class="col-md-6">
-            <div class="card shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="card shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                 <div class="card-body text-white">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
@@ -251,9 +251,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (categoryCtx) {
         const colors = [
-            '#667eea', '#764ba2', '#11998e', '#38ef7d', '#f093fb', 
-            '#f5576c', '#4facfe', '#00f2fe', '#43e97b', '#fa709a',
-            '#fee140', '#fa709a', '#6a11cb', '#2575fc'
+            '#D35400', '#E67E22', '#C0392B', '#F39C12', '#FDF6E3', 
+            '#E74C3C', '#FEF5E7', '#D35400', '#E67E22', '#2C3E50',
+            '#F5D6BA', '#E67E22', '#F39C12', '#FDF6E3'
         ];
         
         new Chart(categoryCtx, {

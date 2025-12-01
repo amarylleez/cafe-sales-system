@@ -8,7 +8,7 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="card shadow-sm">
-                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="card-header" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                     <h5 class="mb-0 text-white">
                         <i class="bi bi-graph-up"></i> KPI & Benchmark Tracking
                     </h5>
@@ -31,7 +31,7 @@
     <div class="row mb-4">
         <!-- Branch Sales Target Card -->
         <div class="col-md-4">
-            <div class="card shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="card shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                 <div class="card-body text-white">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
@@ -69,7 +69,7 @@
 
         <!-- Transaction Target Card -->
         <div class="col-md-4">
-            <div class="card shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <div class="card shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                 <div class="card-body text-white">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
@@ -107,7 +107,7 @@
 
         <!-- Staff Target Card -->
         <div class="col-md-4">
-            <div class="card shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <div class="card shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                 <div class="card-body text-white">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
@@ -271,7 +271,7 @@
                                 <tr>
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            <div class="user-avatar me-2" style="width: 35px; height: 35px; font-size: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                                            <div class="user-avatar me-2" style="width: 35px; height: 35px; font-size: 1rem; background: linear-gradient(135deg, #D35400 0%, #E67E22 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
                                                 {{ substr($staffKpi['staff']->name, 0, 1) }}
                                             </div>
                                             <div>
@@ -349,8 +349,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 {
                     label: 'Monthly Sales (RM)',
                     data: monthlySalesData.values,
-                    backgroundColor: 'rgba(102, 126, 234, 0.8)',
-                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(145, 118, 110, 0.8)',
+                    borderColor: '#D35400',
                     borderWidth: 2,
                     borderRadius: 5
                 },
@@ -359,7 +359,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     label: 'Target (RM)',
                     data: Array(monthlySalesData.labels.length).fill(targetLine),
                     type: 'line',
-                    borderColor: '#f5576c',
+                    borderColor: '#E67E22',
                     borderWidth: 2,
                     borderDash: [5, 5],
                     pointRadius: 0,

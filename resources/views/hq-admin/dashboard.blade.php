@@ -23,7 +23,7 @@
     <!-- Key Metrics -->
     <div class="row g-4 mb-4">
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                 <div class="card-body text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -42,7 +42,7 @@
         </div>
 
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                 <div class="card-body text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -61,7 +61,7 @@
         </div>
 
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                 <div class="card-body text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -80,7 +80,7 @@
         </div>
 
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                 <div class="card-body text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -186,7 +186,7 @@
                             <div class="card bg-light">
                                 <div class="card-body text-center">
                                     <h6 class="text-muted">Branch Manager</h6>
-                                    <div class="user-avatar mx-auto mb-2" style="width: 60px; height: 60px; font-size: 1.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                                    <div class="user-avatar mx-auto mb-2" style="width: 60px; height: 60px; font-size: 1.5rem; background: linear-gradient(135deg, #D35400 0%, #E67E22 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
                                         {{ substr($topBranch->manager->name ?? 'N', 0, 1) }}
                                     </div>
                                     <strong>{{ $topBranch->manager->name ?? 'Not Assigned' }}</strong>
@@ -227,15 +227,15 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($branchesPerformance as $index => $branch)
+                                @foreach($branchesPerformance as $branch)
                                 @php
                                     $avgTransaction = $branch->transactions > 0 ? $branch->sales / $branch->transactions : 0;
                                     $performance = $totalSales > 0 ? ($branch->sales / $totalSales) * 100 : 0;
                                 @endphp
                                 <tr>
                                     <td>
-                                        <span class="badge bg-{{ $index === 0 ? 'success' : ($index === 1 ? 'info' : 'secondary') }} fs-6">
-                                            #{{ $index + 1 }}
+                                        <span class="badge bg-{{ $loop->iteration === 1 ? 'success' : ($loop->iteration === 2 ? 'info' : 'secondary') }} fs-6">
+                                            #{{ $loop->iteration }}
                                         </span>
                                     </td>
                                     <td>
@@ -244,7 +244,7 @@
                                     </td>
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            <div class="user-avatar me-2" style="width: 30px; height: 30px; font-size: 0.9rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                                            <div class="user-avatar me-2" style="width: 30px; height: 30px; font-size: 0.9rem; background: linear-gradient(135deg, #D35400 0%, #E67E22 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
                                                 {{ substr($branch->manager->name ?? 'N', 0, 1) }}
                                             </div>
                                             {{ $branch->manager->name ?? 'Not Assigned' }}
@@ -262,7 +262,7 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <a href="{{ route('hq-admin.analytics') }}" class="btn btn-sm btn-outline-primary">
+                                        <a href="{{ route('hq-admin.analytics.branch', $branch->id) }}" class="btn btn-sm btn-outline-primary">
                                             <i class="bi bi-graph-up"></i> View Analytics
                                         </a>
                                     </td>
@@ -293,14 +293,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 label: 'Sales (RM)',
                 data: branchSalesData.values,
                 backgroundColor: [
-                    'rgba(102, 126, 234, 0.8)',
-                    'rgba(240, 147, 251, 0.8)',
-                    'rgba(79, 172, 254, 0.8)'
+                    'rgba(145, 118, 110, 0.8)',
+                    'rgba(183, 167, 169, 0.8)',
+                    'rgba(246, 236, 227, 0.8)'
                 ],
                 borderColor: [
-                    '#667eea',
-                    '#f093fb',
-                    '#4facfe'
+                    '#D35400',
+                    '#E67E22',
+                    '#D35400'
                 ],
                 borderWidth: 2,
                 borderRadius: 5

@@ -8,7 +8,7 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="card shadow-sm">
-                <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <div class="card-header" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="mb-0 text-white">
                             <i class="bi bi-people"></i> Staff Management
@@ -28,7 +28,7 @@
     <!-- Summary Cards -->
     <div class="row g-4 mb-4">
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                 <div class="card-body text-white text-center">
                     <h3>{{ $totalStaff }}</h3>
                     <small>Total Staff</small>
@@ -36,7 +36,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                 <div class="card-body text-white text-center">
                     <h3>{{ $branchManagers }}</h3>
                     <small>Branch Managers</small>
@@ -44,7 +44,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                 <div class="card-body text-white text-center">
                     <h3>{{ $staffMembers }}</h3>
                     <small>Staff Members</small>
@@ -52,7 +52,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
                 <div class="card-body text-white text-center">
                     <h3>{{ $hqAdmins }}</h3>
                     <small>HQ Admins</small>
@@ -62,87 +62,90 @@
     </div>
 
     <!-- Filter & Search -->
-    <div class="row mb-3">
-        <div class="col-md-4">
-            <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-search"></i></span>
-                <input type="text" class="form-control" id="searchStaff" placeholder="Search by name or email...">
-            </div>
-        </div>
-        <div class="col-md-3">
-            <select class="form-select" id="filterBranch">
-                <option value="">All Branches</option>
-                @foreach($branches as $branch)
-                <option value="{{ $branch->id }}">{{ $branch->name }}</option>
-                @endforeach
-            </select>
-        </div>
-        <div class="col-md-3">
-            <select class="form-select" id="filterRole">
-                <option value="">All Roles</option>
-                <option value="hq_admin">HQ Admin</option>
-                <option value="branch_manager">Branch Manager</option>
-                <option value="staff">Staff</option>
-            </select>
-        </div>
-    </div>
-
-    <!-- Staff Table -->
-    <div class="row">
+    <div class="row mb-4">
         <div class="col-12">
             <div class="card shadow-sm">
                 <div class="card-header bg-white">
-                    <h5 class="mb-0"><i class="bi bi-table"></i> All Staff Members</h5>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-people-fill"></i> All Staff Members</h5>
+                        <div class="d-flex gap-2 align-items-center">
+                            <div class="input-group" style="width: 220px;">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" class="form-control" id="searchStaff" placeholder="Search staff...">
+                            </div>
+                            <select class="form-select" id="filterBranch" style="width: 200px;">
+                                <option value="">All Branches</option>
+                                @foreach($branches as $branch)
+                                <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                                @endforeach
+                            </select>
+                            <select class="form-select" id="filterRole" style="width: 160px;">
+                                <option value="">All Roles</option>
+                                <option value="hq_admin">HQ Admin</option>
+                                <option value="branch_manager">Branch Manager</option>
+                                <option value="staff">Staff</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
                 <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Name</th>
-                                    <th>Email</th>
-                                    <th>Role</th>
-                                    <th>Branch</th>
-                                    <th>Joined Date</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="staffTableBody">
-                                @foreach($allStaff as $staff)
-                                <tr data-branch="{{ $staff->branch_id }}" data-role="{{ $staff->role }}">
-                                    <td>{{ $staff->id }}</td>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="user-avatar me-2" style="width: 35px; height: 35px; font-size: 1rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 50%; display: flex; align-items-center; justify-content: center; color: white; font-weight: 600;">
-                                                {{ substr($staff->name, 0, 1) }}
-                                            </div>
-                                            <span>{{ $staff->name }}</span>
+                    @if($allStaff->count() > 0)
+                    <div class="row g-4" id="staffContainer">
+                        @foreach($allStaff as $staff)
+                        <div class="col-md-6 col-lg-4 col-xl-3 staff-card" 
+                             data-branch="{{ $staff->branch_id }}" 
+                             data-role="{{ $staff->role }}"
+                             data-name="{{ strtolower($staff->name) }}"
+                             data-email="{{ strtolower($staff->email) }}">
+                            <div class="card shadow-sm h-100">
+                                <div class="card-body">
+                                    <div class="text-center mb-3">
+                                        <div class="user-avatar mx-auto" style="width: 70px; height: 70px; font-size: 2rem; background: linear-gradient(135deg, #D35400 0%, #E67E22 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                                            {{ substr($staff->name, 0, 1) }}
                                         </div>
-                                    </td>
-                                    <td>{{ $staff->email }}</td>
-                                    <td>
+                                    </div>
+                                    <h6 class="text-center mb-1">{{ $staff->name }}</h6>
+                                    <p class="text-center text-muted small mb-2">
+                                        <i class="bi bi-envelope"></i> {{ $staff->email }}
+                                    </p>
+                                    <div class="text-center mb-3">
                                         <span class="badge bg-{{ $staff->role === 'hq_admin' ? 'danger' : ($staff->role === 'branch_manager' ? 'primary' : 'info') }}">
                                             {{ ucfirst(str_replace('_', ' ', $staff->role)) }}
                                         </span>
-                                    </td>
-                                    <td>{{ $staff->branch->name ?? 'N/A' }}</td>
-                                    <td>{{ $staff->created_at->format('d M Y') }}</td>
-                                    <td>
-                                        <div class="btn-group btn-group-sm">
-                                            <button class="btn btn-outline-primary" onclick="editStaff({{ $staff->id }})">
-                                                <i class="bi bi-pencil"></i>
-                                            </button>
-                                            <button class="btn btn-outline-danger" onclick="deleteStaff({{ $staff->id }}, '{{ $staff->name }}')">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
+                                    </div>
+                                    @if($staff->branch)
+                                    <p class="text-center text-muted small mb-3">
+                                        <i class="bi bi-building"></i> {{ $staff->branch->name }}
+                                    </p>
+                                    @else
+                                    <p class="text-center text-muted small mb-3">
+                                        <i class="bi bi-building"></i> HQ
+                                    </p>
+                                    @endif
+                                    
+                                    <div class="d-grid gap-2">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="editStaff({{ $staff->id }})">
+                                            <i class="bi bi-pencil"></i> Edit Details
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteStaff({{ $staff->id }}, '{{ $staff->name }}')">
+                                            <i class="bi bi-trash"></i> Remove
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-light text-center">
+                                    <small class="text-muted">
+                                        <i class="bi bi-clock"></i> Member since {{ $staff->created_at->format('M Y') }}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        @endforeach
                     </div>
+                    @else
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> No staff members registered yet.
+                    </div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -256,26 +259,27 @@
 <script>
 const editModal = new bootstrap.Modal(document.getElementById('editStaffModal'));
 
-// Search functionality
-document.getElementById('searchStaff').addEventListener('input', filterTable);
-document.getElementById('filterBranch').addEventListener('change', filterTable);
-document.getElementById('filterRole').addEventListener('change', filterTable);
+// Search and filter functionality
+document.getElementById('searchStaff').addEventListener('input', filterCards);
+document.getElementById('filterBranch').addEventListener('change', filterCards);
+document.getElementById('filterRole').addEventListener('change', filterCards);
 
-function filterTable() {
+function filterCards() {
     const search = document.getElementById('searchStaff').value.toLowerCase();
     const branch = document.getElementById('filterBranch').value;
     const role = document.getElementById('filterRole').value;
     
-    document.querySelectorAll('#staffTableBody tr').forEach(row => {
-        const text = row.textContent.toLowerCase();
-        const rowBranch = row.dataset.branch;
-        const rowRole = row.dataset.role;
+    document.querySelectorAll('.staff-card').forEach(card => {
+        const cardName = card.dataset.name;
+        const cardEmail = card.dataset.email;
+        const cardBranch = card.dataset.branch;
+        const cardRole = card.dataset.role;
         
-        const matchSearch = text.includes(search);
-        const matchBranch = !branch || rowBranch === branch;
-        const matchRole = !role || rowRole === role;
+        const matchSearch = cardName.includes(search) || cardEmail.includes(search);
+        const matchBranch = !branch || cardBranch === branch;
+        const matchRole = !role || cardRole === role;
         
-        row.style.display = (matchSearch && matchBranch && matchRole) ? '' : 'none';
+        card.style.display = (matchSearch && matchBranch && matchRole) ? '' : 'none';
     });
 }
 

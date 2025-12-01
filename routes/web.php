@@ -38,6 +38,7 @@ Route::middleware(['auth'])->prefix('hq-admin')->name('hq-admin.')->group(functi
     
     // Analytics
     Route::get('/analytics', [HQAdminController::class, 'analytics'])->name('analytics');
+    Route::get('/analytics/branch/{id}', [HQAdminController::class, 'branchAnalytics'])->name('analytics.branch');
     
     // Manage Staff
     Route::get('/manage', [HQAdminController::class, 'manage'])->name('manage');
@@ -56,6 +57,11 @@ Route::middleware(['auth'])->prefix('hq-admin')->name('hq-admin.')->group(functi
     Route::get('/reports/export/pdf', [HQAdminController::class, 'exportPDF'])->name('reports.export.pdf');
     Route::get('/reports/{id}', [HQAdminController::class, 'getReport'])->name('reports.get');
     Route::get('/reports/{id}/pdf', [HQAdminController::class, 'downloadReportPDF'])->name('reports.pdf');
+    
+    // Settings
+    Route::get('/settings', [HQAdminController::class, 'settings'])->name('settings');
+    Route::patch('/settings/profile', [HQAdminController::class, 'updateProfile'])->name('settings.profile');
+    Route::put('/settings/password', [HQAdminController::class, 'updatePassword'])->name('settings.password');
 });
    
 // Branch Manager Routes
@@ -67,6 +73,7 @@ Route::middleware(['auth'])->prefix('branch-manager')->name('branch-manager.')->
     Route::get('/sales-report', [BranchManagerController::class, 'salesReport'])->name('sales-report');
     Route::get('/sales-report/{id}', [BranchManagerController::class, 'getReportDetails'])->name('sales-report.details');
     Route::post('/sales-report/{id}/verify', [BranchManagerController::class, 'verifyReport'])->name('sales-report.verify');
+    Route::post('/sales-report/{id}/edit', [BranchManagerController::class, 'updateReport'])->name('sales-report.edit');
     
     // KPI & Benchmark
     Route::get('/kpi-benchmark', [BranchManagerController::class, 'kpiBenchmark'])->name('kpi-benchmark');
@@ -81,6 +88,10 @@ Route::middleware(['auth'])->prefix('branch-manager')->name('branch-manager.')->
     
     // Stock Management (View Only)
     Route::get('/stock', [BranchManagerController::class, 'stock'])->name('stock');
+
+    // Alerts/Notifications
+    Route::get('/alerts', [BranchManagerController::class, 'alerts'])->name('alerts');
+    Route::post('/notifications/{id}/mark-read', [BranchManagerController::class, 'markNotificationAsRead'])->name('notifications.mark-read');
 });
 
 // Staff Routes 

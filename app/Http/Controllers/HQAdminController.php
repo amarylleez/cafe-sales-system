@@ -201,6 +201,172 @@ class HQAdminController extends Controller
     }
 
     /**
+     * Show branch-specific analytics (like Branch Manager dashboard)
+     */
+    public function branchAnalytics($id)
+    {
+        $branch = Branch::findOrFail($id);
+        $currentMonth = Carbon::now();
+        $lastMonth = Carbon::now()->subMonth();
+
+        // Get branch manager
+        $branchManager = User::where('branch_id', $branch->id)
+            ->where('role', 'branch_manager')
+            ->first();
+
+        // Week sales
+        $weekSales = DailySale::where('branch_id', $branch->id)
+            ->whereBetween('sale_date', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()])
+            ->where('status', 'completed')
+            ->sum('total_amount');
+
+        $lastWeekSales = DailySale::where('branch_id', $branch->id)
+            ->whereBetween('sale_date', [Carbon::now()->subWeek()->startOfWeek(), Carbon::now()->subWeek()->endOfWeek()])
+            ->where('status', 'completed')
+            ->sum('total_amount');
+
+        $weekGrowth = $lastWeekSales > 0 
+            ? (($weekSales - $lastWeekSales) / $lastWeekSales) * 100 
+            : 0;
+
+        // Month sales
+        $monthSales = DailySale::where('branch_id', $branch->id)
+            ->whereMonth('sale_date', $currentMonth->month)
+            ->whereYear('sale_date', $currentMonth->year)
+            ->where('status', 'completed')
+            ->sum('total_amount');
+
+        // Get benchmark target
+        $benchmark = Benchmark::where('is_active', true)->first();
+        $monthlyTarget = $benchmark->monthly_sales_target ?? 500;
+
+        // Total transactions this month
+        $totalTransactions = DailySale::where('branch_id', $branch->id)
+            ->whereMonth('sale_date', $currentMonth->month)
+            ->whereYear('sale_date', $currentMonth->year)
+            ->where('status', 'completed')
+            ->count();
+
+        // Active staff count
+        $activeStaff = User::where('branch_id', $branch->id)->count();
+
+        // Sales trend (last 7 days)
+        $salesTrendData = $this->getBranchSalesTrend($branch->id);
+
+        // Sales by category
+        $categoryData = $this->getBranchCategoryData($branch->id, $currentMonth);
+
+        // Monthly sales data (last 6 months)
+        $monthlySalesData = $this->getBranchMonthlySalesData($branch->id);
+
+        return view('hq-admin.branch-analytics', compact(
+            'branch',
+            'branchManager',
+            'weekSales',
+            'weekGrowth',
+            'monthSales',
+            'monthlyTarget',
+            'totalTransactions',
+            'activeStaff',
+            'salesTrendData',
+            'categoryData',
+            'monthlySalesData',
+            'benchmark'
+        ));
+    }
+
+    /**
+     * Get branch sales trend (last 7 days)
+     */
+    private function getBranchSalesTrend($branchId)
+    {
+        $labels = [];
+        $values = [];
+
+        for ($i = 6; $i >= 0; $i--) {
+            $date = Carbon::now()->subDays($i);
+            $labels[] = $date->format('M d');
+            
+            $sales = DailySale::where('branch_id', $branchId)
+                ->whereDate('sale_date', $date)
+                ->where('status', 'completed')
+                ->sum('total_amount');
+            
+            $values[] = $sales;
+        }
+
+        return [
+            'labels' => $labels,
+            'values' => $values
+        ];
+    }
+
+    /**
+     * Get branch category data
+     */
+    private function getBranchCategoryData($branchId, $month)
+    {
+        $categories = \App\Models\Category::all();
+        $labels = [];
+        $values = [];
+
+        foreach ($categories as $category) {
+            $sales = DB::table('daily_sales_items')
+                ->join('daily_sales', 'daily_sales_items.daily_sale_id', '=', 'daily_sales.id')
+                ->join('products', 'daily_sales_items.product_id', '=', 'products.id')
+                ->where('daily_sales.branch_id', $branchId)
+                ->where('products.category_id', $category->id)
+                ->whereMonth('daily_sales.sale_date', $month->month)
+                ->whereYear('daily_sales.sale_date', $month->year)
+                ->where('daily_sales.status', 'completed')
+                ->sum('daily_sales_items.quantity');
+
+            if ($sales > 0) {
+                $labels[] = $category->name;
+                $values[] = $sales;
+            }
+        }
+
+        // If no category data, show default
+        if (empty($labels)) {
+            $labels = ['No Sales'];
+            $values = [0];
+        }
+
+        return [
+            'labels' => $labels,
+            'values' => $values
+        ];
+    }
+
+    /**
+     * Get branch monthly sales data (last 6 months)
+     */
+    private function getBranchMonthlySalesData($branchId)
+    {
+        $labels = [];
+        $values = [];
+
+        for ($i = 5; $i >= 0; $i--) {
+            $date = Carbon::now()->subMonths($i);
+            $labels[] = $date->format('M Y');
+            
+            $sales = DailySale::where('branch_id', $branchId)
+                ->whereMonth('sale_date', $date->month)
+                ->whereYear('sale_date', $date->year)
+                ->where('status', 'completed')
+                ->sum('total_amount');
+            
+            $values[] = $sales;
+        }
+
+        return [
+            'labels' => $labels,
+            'values' => $values
+        ];
+    }
+
+    /**
      * Get top 3 branches
      */
     private function getTopBranches($month)
@@ -338,8 +504,19 @@ class HQAdminController extends Controller
     {
         $branches = Branch::all();
         
-        // Get all staff
-        $allStaff = User::with('branch')->orderBy('created_at', 'desc')->get();
+        // Get all staff, sorted by branch and role (HQ Admins first, then by branch with managers before staff)
+        $allStaff = User::with('branch')
+            ->get()
+            ->sortBy([
+                // First: HQ Admins (no branch) at the top
+                fn($a, $b) => ($a->role === 'hq_admin' ? 0 : 1) <=> ($b->role === 'hq_admin' ? 0 : 1),
+                // Then: Group by branch name
+                fn($a, $b) => ($a->branch->name ?? 'ZZZ') <=> ($b->branch->name ?? 'ZZZ'),
+                // Within each branch: Branch managers first, then staff
+                fn($a, $b) => ($a->role === 'branch_manager' ? 0 : 1) <=> ($b->role === 'branch_manager' ? 0 : 1),
+                // Finally: Sort by name within the same role
+                fn($a, $b) => $a->name <=> $b->name,
+            ]);
         
         // Count by role
         $totalStaff = User::count();
@@ -538,9 +715,10 @@ class HQAdminController extends Controller
         // Build query
         $query = DailySale::with(['branch', 'staff']);
 
-        // Apply filters
-        if ($request->has('date_range') && $request->date_range !== '') {
-            switch ($request->date_range) {
+        // Apply filters - only filter by date if date_range has a value and is not empty
+        $dateRange = $request->input('date_range');
+        if ($dateRange && $dateRange !== '') {
+            switch ($dateRange) {
                 case 'today':
                     $query->whereDate('sale_date', Carbon::today());
                     break;
@@ -552,16 +730,16 @@ class HQAdminController extends Controller
                           ->whereYear('sale_date', Carbon::now()->year);
                     break;
                 case 'custom':
-                    if ($request->has('start_date') && $request->has('end_date')) {
-                        $query->whereBetween('sale_date', [$request->start_date, $request->end_date]);
+                    $startDate = $request->input('start_date');
+                    $endDate = $request->input('end_date');
+                    if ($startDate && $endDate && $startDate !== '' && $endDate !== '') {
+                        $query->whereBetween('sale_date', [$startDate, $endDate]);
                     }
                     break;
             }
-        } else {
-            // Default to current month
-            $query->whereMonth('sale_date', Carbon::now()->month)
-                  ->whereYear('sale_date', Carbon::now()->year);
+            // If date_range is provided but no valid filter matched (like custom without dates), don't apply any date filter
         }
+        // When no date_range is provided (first page load or reset), show ALL data without date filter
 
         if ($request->has('branch') && $request->branch !== '') {
             $query->where('branch_id', $request->branch);
@@ -571,14 +749,17 @@ class HQAdminController extends Controller
             $query->where('status', $request->status);
         }
 
+        // Clone the query before pagination to calculate summary correctly
+        $summaryQuery = clone $query;
+        
         $salesReports = $query->orderBy('sale_date', 'desc')->paginate(15);
 
-        // Calculate summary
+        // Calculate summary using fresh queries based on same filters
         $reportSummary = [
-            'totalSales' => $query->sum('total_amount'),
-            'totalReports' => $query->count(),
-            'verifiedReports' => $query->where('status', 'verified')->count(),
-            'pendingReports' => $query->where('status', 'pending')->count()
+            'totalSales' => (clone $summaryQuery)->sum('total_amount'),
+            'totalReports' => (clone $summaryQuery)->count(),
+            'verifiedReports' => (clone $summaryQuery)->where('status', 'completed')->count(),
+            'pendingReports' => (clone $summaryQuery)->where('status', 'pending')->count()
         ];
 
         return view('hq-admin.reports', compact('branches', 'salesReports', 'reportSummary'));
@@ -702,5 +883,51 @@ class HQAdminController extends Controller
         if ($status && $status !== '') {
             $query->where('status', $status);
         }
+    }
+
+    /**
+     * Show settings page
+     */
+    public function settings()
+    {
+        $user = auth()->user();
+        return view('hq-admin.settings', compact('user'));
+    }
+
+    /**
+     * Update profile information
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = auth()->user();
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email,' . $user->id,
+        ]);
+
+        $user->update([
+            'name' => $request->name,
+            'email' => $request->email,
+        ]);
+
+        return redirect()->route('hq-admin.settings')->with('status', 'profile-updated');
+    }
+
+    /**
+     * Update password
+     */
+    public function updatePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required|current_password',
+            'password' => 'required|min:8|confirmed',
+        ]);
+
+        auth()->user()->update([
+            'password' => Hash::make($request->password),
+        ]);
+
+        return redirect()->route('hq-admin.settings')->with('status', 'password-updated');
     }
 }

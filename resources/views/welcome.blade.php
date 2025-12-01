@@ -32,7 +32,7 @@
                 left: 0;
                 right: 0;
                 bottom: 0;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+                background: linear-gradient(135deg, #D35400 0%, #E67E22 50%, #FDF6E3 100%);
                 opacity: 0.3;
                 z-index: 0;
             }

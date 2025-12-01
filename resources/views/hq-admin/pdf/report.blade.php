@@ -29,12 +29,12 @@
             text-align: center;
             margin-bottom: 20px;
             padding-bottom: 15px;
-            border-bottom: 2px dashed #667eea;
+            border-bottom: 2px dashed #D35400;
         }
         
         .header h1 {
             font-size: 20px;
-            color: #667eea;
+            color: #D35400;
             margin-bottom: 5px;
         }
         
@@ -84,7 +84,7 @@
         .summary-section h3 {
             text-align: center;
             margin-bottom: 15px;
-            color: #667eea;
+            color: #D35400;
             font-size: 14px;
             text-transform: uppercase;
         }
@@ -108,14 +108,14 @@
         }
         
         .total-row {
-            border-top: 2px solid #667eea;
+            border-top: 2px solid #D35400;
             padding-top: 10px;
             margin-top: 10px;
         }
         
         .total-row .value {
             font-size: 18px;
-            color: #667eea;
+            color: #D35400;
         }
         
         .status {
@@ -144,12 +144,12 @@
             margin-bottom: 20px;
             padding: 10px;
             background-color: #f8f9fa;
-            border-left: 3px solid #667eea;
+            border-left: 3px solid #D35400;
         }
         
         .notes h4 {
             margin-bottom: 5px;
-            color: #667eea;
+            color: #D35400;
         }
         
         .footer {
@@ -243,3 +243,4 @@
     </div>
 </body>
 </html>
+

@@ -9,6 +9,8 @@ use App\Models\User;
 use App\Models\KPI;
 use App\Models\Branch;
 use App\Models\Benchmark;
+use App\Models\BranchStock;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -51,12 +53,9 @@ class BranchManagerController extends Controller
             ->where('status', 'completed')
             ->sum('total_amount');
 
-        // Get monthly target from KPIs
-        $monthlyTarget = KPI::where('branch_id', $branchId)
-            ->where('kpi_type', 'sales_amount')
-            ->whereMonth('target_month', Carbon::now()->month)
-            ->whereYear('target_month', Carbon::now()->year)
-            ->sum('target_value');
+        // Get monthly target from HQ Admin Benchmark (not from branch KPIs)
+        $benchmark = Benchmark::where('is_active', true)->first();
+        $monthlyTarget = $benchmark ? $benchmark->monthly_sales_target : 0;
 
         // Total transactions this month
         $totalTransactions = DailySale::where('branch_id', $branchId)
@@ -80,10 +79,15 @@ class BranchManagerController extends Controller
         $monthlySalesData = $this->getMonthlySalesData($branchId);
 
         // Pending reports count
-        $pendingReports = 0; // You can implement this later
+        $pendingReports = DailySale::where('branch_id', $branchId)
+            ->where('status', 'pending')
+            ->count();
 
-        // Low stock items
-        $lowStockItems = 0; // You can implement inventory tracking later
+        // Low stock items for THIS branch
+        $lowStockItems = BranchStock::where('branch_id', $branchId)
+            ->where('stock_quantity', '<', 10)
+            ->where('is_available', true)
+            ->count();
 
         return view('branch-manager.dashboard', compact(
             'branch',
@@ -97,7 +101,8 @@ class BranchManagerController extends Controller
             'categoryData',
             'monthlySalesData',
             'pendingReports',
-            'lowStockItems'
+            'lowStockItems',
+            'benchmark'
         ));
     }
 
@@ -180,27 +185,58 @@ class BranchManagerController extends Controller
     /**
      * Show sales report page
      */
-    public function salesReport()
+    public function salesReport(Request $request)
     {
         $user = auth()->user();
         $branchId = $user->branch_id;
 
-        // Get monthly sales reports submitted by staff
-        $reports = DailySale::where('branch_id', $branchId)
-            ->with(['staff', 'items.product'])
-            ->whereMonth('sale_date', Carbon::now()->month)
-            ->whereYear('sale_date', Carbon::now()->year)
-            ->orderBy('sale_date', 'desc')
-            ->paginate(20);
+        // Build query
+        $query = DailySale::where('branch_id', $branchId)
+            ->with(['staff', 'items.product']);
 
-        // Calculate summary
-        $totalSales = DailySale::where('branch_id', $branchId)
-            ->whereMonth('sale_date', Carbon::now()->month)
-            ->whereYear('sale_date', Carbon::now()->year)
-            ->where('status', 'completed')
-            ->sum('total_amount');
+        // Apply date filter
+        $dateRange = $request->input('date_range');
+        if ($dateRange && $dateRange !== '') {
+            switch ($dateRange) {
+                case 'today':
+                    $query->whereDate('sale_date', Carbon::today());
+                    break;
+                case 'week':
+                    $query->whereBetween('sale_date', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()]);
+                    break;
+                case 'month':
+                    $query->whereMonth('sale_date', Carbon::now()->month)
+                          ->whereYear('sale_date', Carbon::now()->year);
+                    break;
+                case 'custom':
+                    $startDate = $request->input('start_date');
+                    $endDate = $request->input('end_date');
+                    if ($startDate && $endDate && $startDate !== '' && $endDate !== '') {
+                        $query->whereBetween('sale_date', [$startDate, $endDate]);
+                    }
+                    break;
+            }
+        }
+        // If no date_range provided, show all data for this branch
 
-        $totalTransactions = $reports->total();
+        // Apply status filter
+        $status = $request->input('status');
+        if ($status && $status !== '') {
+            if ($status === 'approved') {
+                $query->whereNotNull('verified_by');
+            } elseif ($status === 'pending') {
+                $query->whereNull('verified_by');
+            }
+        }
+
+        // Clone for summary calculations
+        $summaryQuery = clone $query;
+
+        $reports = $query->orderBy('sale_date', 'desc')->paginate(20);
+
+        // Calculate summary based on filtered data
+        $totalSales = (clone $summaryQuery)->where('status', 'completed')->sum('total_amount');
+        $totalTransactions = (clone $summaryQuery)->count();
 
         return view('branch-manager.sales-report', compact('reports', 'totalSales', 'totalTransactions'));
     }
@@ -330,13 +366,38 @@ class BranchManagerController extends Controller
     }
 
     /**
-     * Show inventory page (same as staff)
+     * Show inventory page for this branch
      */
     public function inventory()
     {
+        $user = auth()->user();
+        $branchId = $user->branch_id;
+        
+        // Get products with branch-specific stock
         $products = Product::with('category')
             ->orderBy('name')
-            ->paginate(20);
+            ->get()
+            ->map(function ($product) use ($branchId) {
+                $branchStock = BranchStock::where('branch_id', $branchId)
+                    ->where('product_id', $product->id)
+                    ->first();
+                
+                $product->stock_quantity = $branchStock ? $branchStock->stock_quantity : 0;
+                $product->is_available = $branchStock ? $branchStock->is_available : true;
+                
+                return $product;
+            });
+        
+        // Paginate manually
+        $page = request()->get('page', 1);
+        $perPage = 20;
+        $products = new \Illuminate\Pagination\LengthAwarePaginator(
+            $products->forPage($page, $perPage),
+            $products->count(),
+            $perPage,
+            $page,
+            ['path' => request()->url()]
+        );
 
         $categories = Category::all();
 
@@ -344,18 +405,22 @@ class BranchManagerController extends Controller
     }
 
     /**
-     * Update product availability
+     * Update product availability for this branch
      */
     public function updateProductAvailability(Request $request, $id)
     {
         try {
-            $product = Product::findOrFail($id);
-            $product->is_available = $request->boolean('is_available');
-            $product->save();
+            $user = auth()->user();
+            $branchId = $user->branch_id;
+            
+            // Get or create branch stock
+            $branchStock = BranchStock::getOrCreate($branchId, $id);
+            $branchStock->is_available = $request->boolean('is_available');
+            $branchStock->save();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Product availability updated',
+                'message' => 'Product availability updated for your branch',
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -380,19 +445,82 @@ class BranchManagerController extends Controller
     }
 
     /**
-     * Verify report
+     * Verify report - approves the transaction and changes status to completed
      */
     public function verifyReport($id)
     {
         $report = DailySale::findOrFail($id);
         $report->verified_by = auth()->id();
         $report->verified_at = now();
+        $report->status = 'completed';
+        $report->completed_at = now();
         $report->save();
 
         return response()->json([
             'success' => true,
-            'message' => 'Report verified successfully'
+            'message' => 'Report verified and approved successfully'
         ]);
+    }
+
+    /**
+     * Update report details
+     */
+    public function updateReport(Request $request, $id)
+    {
+        try {
+            $report = DailySale::with('items')->findOrFail($id);
+            
+            // Update basic fields
+            if ($request->has('sale_date')) {
+                $report->sale_date = $request->sale_date;
+            }
+            if ($request->has('payment_method')) {
+                $report->payment_method = $request->payment_method;
+            }
+            if ($request->has('notes')) {
+                $report->notes = $request->notes;
+            }
+            
+            // Update item quantities if provided
+            if ($request->has('items')) {
+                $totalAmount = 0;
+                $itemsCount = 0;
+                
+                foreach ($request->items as $itemData) {
+                    $item = \App\Models\DailySalesItem::find($itemData['id']);
+                    if ($item) {
+                        $item->quantity = $itemData['quantity'];
+                        $item->subtotal = $itemData['quantity'] * $item->unit_price;
+                        $item->total = $item->subtotal - ($item->discount ?? 0);
+                        $item->save();
+                        
+                        $totalAmount += $item->total;
+                        $itemsCount += $item->quantity;
+                    }
+                }
+                
+                $report->total_amount = $totalAmount;
+                $report->items_count = $itemsCount;
+            }
+            
+            // Reset approval status - requires re-approval after edit
+            $report->status = 'pending';
+            $report->verified_by = null;
+            $report->verified_at = null;
+            $report->completed_at = null;
+            
+            $report->save();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Report updated successfully. Please re-approve the transaction.'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update report: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     /**
@@ -447,19 +575,88 @@ class BranchManagerController extends Controller
     }
 
     /**
-     * Display stock overview page (view only)
+     * Display stock overview page (view only) for this branch
      */
     public function stock()
     {
-        $products = Product::with('category')->orderBy('name')->get();
+        $user = auth()->user();
+        $branchId = $user->branch_id;
+        
+        // Get products with branch-specific stock
+        $products = Product::with('category')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($product) use ($branchId) {
+                $branchStock = BranchStock::where('branch_id', $branchId)
+                    ->where('product_id', $product->id)
+                    ->first();
+                
+                $product->stock_quantity = $branchStock ? $branchStock->stock_quantity : 0;
+                $product->is_available = $branchStock ? $branchStock->is_available : true;
+                
+                return $product;
+            });
+        
         $categories = Category::orderBy('name')->get();
         
-        // Get recent stock logs
+        // Get recent stock logs for THIS branch only
         $stockLogs = \App\Models\StockLog::with(['product', 'user'])
+            ->where('branch_id', $branchId)
             ->orderBy('created_at', 'desc')
             ->limit(20)
             ->get();
 
         return view('branch-manager.stock', compact('products', 'categories', 'stockLogs'));
+    }
+
+    /**
+     * Display alerts page
+     */
+    public function alerts()
+    {
+        $user = auth()->user();
+        $branchId = $user->branch_id;
+
+        // Get regular notifications for this user
+        $notifications = Notification::where('user_id', $user->id)
+            ->whereIn('type', ['kpi_target_not_met', 'low_stock_alert'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Get low stock products for THIS branch only
+        $lowStockProducts = BranchStock::with(['product.category'])
+            ->where('branch_id', $branchId)
+            ->where('stock_quantity', '<', 10)
+            ->where('is_available', true)
+            ->orderBy('stock_quantity', 'asc')
+            ->get()
+            ->map(function ($stock) {
+                // Attach stock info to product for easy access in view
+                $product = $stock->product;
+                $product->stock_quantity = $stock->stock_quantity;
+                $product->is_available = $stock->is_available;
+                return $product;
+            });
+
+        // Get pending reports count
+        $pendingReports = DailySale::where('branch_id', $branchId)
+            ->whereNull('verified_by')
+            ->count();
+
+        return view('branch-manager.alerts', compact('notifications', 'lowStockProducts', 'pendingReports'));
+    }
+
+    /**
+     * Mark notification as read
+     */
+    public function markNotificationAsRead($id)
+    {
+        $notification = Notification::where('id', $id)
+            ->where('user_id', auth()->id())
+            ->firstOrFail();
+        
+        $notification->update(['is_read' => true]);
+
+        return response()->json(['success' => true]);
     }
 }
