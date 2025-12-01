@@ -57,27 +57,27 @@
                         <div class="col-md-2">
                             <label class="form-label">Date Range</label>
                             <select class="form-select" id="dateRange">
-                                <option value="" selected>All Time</option>
-                                <option value="today">Today</option>
-                                <option value="week">This Week</option>
-                                <option value="month">This Month</option>
-                                <option value="custom">Custom Range</option>
+                                <option value="" {{ request('date_range') == '' ? 'selected' : '' }}>All Time</option>
+                                <option value="today" {{ request('date_range') == 'today' ? 'selected' : '' }}>Today</option>
+                                <option value="week" {{ request('date_range') == 'week' ? 'selected' : '' }}>This Week</option>
+                                <option value="month" {{ request('date_range') == 'month' ? 'selected' : '' }}>This Month</option>
+                                <option value="custom" {{ request('date_range') == 'custom' ? 'selected' : '' }}>Custom Range</option>
                             </select>
                         </div>
-                        <div class="col-md-2" id="customDateStart" style="display:none;">
+                        <div class="col-md-2" id="customDateStart" style="display:{{ request('date_range') == 'custom' ? 'block' : 'none' }};">
                             <label class="form-label">Start Date</label>
-                            <input type="date" class="form-control" id="startDate">
+                            <input type="date" class="form-control" id="startDate" value="{{ request('start_date') }}">
                         </div>
-                        <div class="col-md-2" id="customDateEnd" style="display:none;">
+                        <div class="col-md-2" id="customDateEnd" style="display:{{ request('date_range') == 'custom' ? 'block' : 'none' }};">
                             <label class="form-label">End Date</label>
-                            <input type="date" class="form-control" id="endDate">
+                            <input type="date" class="form-control" id="endDate" value="{{ request('end_date') }}">
                         </div>
                         <div class="col-md-2">
                             <label class="form-label">Status</label>
                             <select class="form-select" id="filterStatus">
-                                <option value="">All Status</option>
-                                <option value="approved">Approved</option>
-                                <option value="pending">Pending Approval</option>
+                                <option value="" {{ request('status') == '' ? 'selected' : '' }}>All Status</option>
+                                <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Approved</option>
+                                <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Pending Approval</option>
                             </select>
                         </div>
                         <div class="col-md-3">

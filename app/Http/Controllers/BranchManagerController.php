@@ -234,8 +234,8 @@ class BranchManagerController extends Controller
 
         $reports = $query->orderBy('sale_date', 'desc')->paginate(20);
 
-        // Calculate summary based on filtered data
-        $totalSales = (clone $summaryQuery)->where('status', 'completed')->sum('total_amount');
+        // Calculate summary based on filtered data (include all matching records, not just completed)
+        $totalSales = (clone $summaryQuery)->sum('total_amount');
         $totalTransactions = (clone $summaryQuery)->count();
 
         return view('branch-manager.sales-report', compact('reports', 'totalSales', 'totalTransactions'));
