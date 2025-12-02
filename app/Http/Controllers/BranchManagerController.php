@@ -260,12 +260,15 @@ class BranchManagerController extends Controller
         $filename = 'sales_report_' . $branch->name . '_' . date('Y-m-d') . '.csv';
         
         $headers = [
-            'Content-Type' => 'text/csv',
+            'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ];
 
         $callback = function() use ($sales) {
             $file = fopen('php://output', 'w');
+            
+            // Add BOM for Excel UTF-8 compatibility
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
             
             // CSV Header
             fputcsv($file, [
@@ -284,17 +287,17 @@ class BranchManagerController extends Controller
             foreach ($sales as $sale) {
                 $itemsList = $sale->items->map(function($item) {
                     return $item->product->name . ' x' . $item->quantity;
-                })->implode(', ');
+                })->implode('; '); // Use semicolon to avoid CSV comma issues
 
-                // Format date in a way Excel will recognize and display properly
-                $dateFormatted = \Carbon\Carbon::parse($sale->sale_date)->format('Y-m-d');
+                // Format date as plain text for Excel
+                $dateFormatted = \Carbon\Carbon::parse($sale->sale_date)->format('d M Y');
 
                 fputcsv($file, [
                     $sale->transaction_id,
                     $dateFormatted,
                     $sale->staff->name ?? 'N/A',
                     $itemsList,
-                    $sale->total_amount, // Raw number without formatting for Excel
+                    number_format($sale->total_amount, 2, '.', ''), // Format without thousand separator
                     ucfirst(str_replace('_', ' ', $sale->payment_method)),
                     ucfirst($sale->status),
                     $sale->verifier->name ?? 'Pending',
