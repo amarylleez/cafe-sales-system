@@ -119,11 +119,8 @@
                                         <div class="d-flex justify-content-between align-items-start">
                                             <div>
                                                 <div class="fw-bold">
-                                                    <i class="bi bi-clock"></i>
-                                                    {{ \Carbon\Carbon::parse($schedule->start_time)->format('h:i A') }} - 
-                                                    {{ \Carbon\Carbon::parse($schedule->end_time)->format('h:i A') }}
+                                                    {{ $schedule->shift_label }}
                                                 </div>
-                                                <small>{{ $schedule->shift_label }}</small>
                                             </div>
                                         </div>
                                         @if($schedule->notes)
@@ -187,8 +184,7 @@
                                 <tr>
                                     <th>Date</th>
                                     <th>Day</th>
-                                    <th>Time</th>
-                                    <th>Shift Type</th>
+                                    <th>Shift</th>
                                     <th>Status</th>
                                     <th>Action</th>
                                 </tr>
@@ -198,10 +194,6 @@
                                 <tr>
                                     <td>{{ $schedule->schedule_date->format('M d, Y') }}</td>
                                     <td>{{ $schedule->schedule_date->format('l') }}</td>
-                                    <td>
-                                        {{ \Carbon\Carbon::parse($schedule->start_time)->format('h:i A') }} - 
-                                        {{ \Carbon\Carbon::parse($schedule->end_time)->format('h:i A') }}
-                                    </td>
                                     <td>{{ $schedule->shift_label }}</td>
                                     <td><span class="badge {{ $schedule->status_badge }}">{{ ucfirst($schedule->status) }}</span></td>
                                     <td>

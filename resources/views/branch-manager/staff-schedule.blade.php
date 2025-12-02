@@ -91,10 +91,7 @@
                                              style="cursor: pointer;"
                                              onclick="viewScheduleDetails({{ $schedule->id }}, {{ json_encode($schedule) }})">
                                             <span class="badge {{ $schedule->status_badge }} w-100 py-2">
-                                                <i class="bi bi-clock"></i>
-                                                {{ \Carbon\Carbon::parse($schedule->start_time)->format('h:i A') }}
-                                                <br>
-                                                <small>{{ $schedule->shift_label }}</small>
+                                                {{ $schedule->shift_label }}
                                             </span>
                                         </div>
                                         @empty
@@ -164,23 +161,13 @@
                         <label class="form-label">Date</label>
                         <input type="date" class="form-control" name="schedule_date" id="scheduleDate" required>
                     </div>
-                    <div class="row mb-3">
-                        <div class="col-6">
-                            <label class="form-label">Start Time</label>
-                            <input type="time" class="form-control" name="start_time" id="scheduleStartTime" required>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label">End Time</label>
-                            <input type="time" class="form-control" name="end_time" id="scheduleEndTime" required>
-                        </div>
-                    </div>
                     <div class="mb-3">
                         <label class="form-label">Shift Type</label>
                         <select class="form-select" name="shift_type" id="scheduleShiftType" required>
-                            <option value="morning">Morning Shift (6AM - 2PM)</option>
-                            <option value="afternoon">Afternoon Shift (2PM - 10PM)</option>
-                            <option value="evening">Evening Shift (6PM - 12AM)</option>
-                            <option value="full_day">Full Day</option>
+                            <option value="morning">Morning Shift (6:00 AM - 2:00 PM)</option>
+                            <option value="afternoon">Afternoon Shift (2:00 PM - 10:00 PM)</option>
+                            <option value="evening">Evening Shift (6:00 PM - 12:00 AM)</option>
+                            <option value="full_day">Full Day (9:00 AM - 6:00 PM)</option>
                         </select>
                     </div>
                     <div class="mb-3">
@@ -244,21 +231,6 @@ let currentScheduleId = null;
 // Set default date to today
 document.getElementById('scheduleDate').valueAsDate = new Date();
 
-// Auto-fill times based on shift type
-document.getElementById('scheduleShiftType').addEventListener('change', function() {
-    const times = {
-        'morning': { start: '06:00', end: '14:00' },
-        'afternoon': { start: '14:00', end: '22:00' },
-        'evening': { start: '18:00', end: '00:00' },
-        'full_day': { start: '09:00', end: '18:00' }
-    };
-    
-    if (times[this.value]) {
-        document.getElementById('scheduleStartTime').value = times[this.value].start;
-        document.getElementById('scheduleEndTime').value = times[this.value].end;
-    }
-});
-
 // Open modal with pre-filled staff and date
 function openAddScheduleForStaff(staffId, staffName, date) {
     document.getElementById('scheduleStaffId').value = staffId;
@@ -273,8 +245,6 @@ document.getElementById('addScheduleForm').addEventListener('submit', function(e
     const formData = {
         staff_id: document.getElementById('scheduleStaffId').value,
         schedule_date: document.getElementById('scheduleDate').value,
-        start_time: document.getElementById('scheduleStartTime').value,
-        end_time: document.getElementById('scheduleEndTime').value,
         shift_type: document.getElementById('scheduleShiftType').value,
         notes: document.getElementById('scheduleNotes').value
     };
@@ -320,6 +290,13 @@ function viewScheduleDetails(scheduleId, schedule) {
         `<option value="${s}" ${schedule.status === s ? 'selected' : ''}>${statusLabels[s]}</option>`
     ).join('');
     
+    const shiftTimes = {
+        'morning': '6:00 AM - 2:00 PM',
+        'afternoon': '2:00 PM - 10:00 PM',
+        'evening': '6:00 PM - 12:00 AM',
+        'full_day': '9:00 AM - 6:00 PM'
+    };
+    
     document.getElementById('scheduleDetailsContent').innerHTML = `
         <div class="mb-3">
             <label class="form-label text-muted">Staff Member</label>
@@ -329,19 +306,10 @@ function viewScheduleDetails(scheduleId, schedule) {
             <label class="form-label text-muted">Date</label>
             <p class="fw-bold">${new Date(schedule.schedule_date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
         </div>
-        <div class="row mb-3">
-            <div class="col-6">
-                <label class="form-label text-muted">Start Time</label>
-                <p class="fw-bold">${schedule.start_time}</p>
-            </div>
-            <div class="col-6">
-                <label class="form-label text-muted">End Time</label>
-                <p class="fw-bold">${schedule.end_time}</p>
-            </div>
-        </div>
         <div class="mb-3">
-            <label class="form-label text-muted">Shift Type</label>
+            <label class="form-label text-muted">Shift</label>
             <p class="fw-bold">${schedule.shift_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
+            <small class="text-muted"><i class="bi bi-clock"></i> ${shiftTimes[schedule.shift_type] || 'N/A'}</small>
         </div>
         <div class="mb-3">
             <label class="form-label">Update Status</label>

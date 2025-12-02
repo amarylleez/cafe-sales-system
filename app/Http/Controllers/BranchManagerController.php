@@ -822,8 +822,6 @@ class BranchManagerController extends Controller
         $request->validate([
             'staff_id' => 'required|exists:users,id',
             'schedule_date' => 'required|date',
-            'start_time' => 'required',
-            'end_time' => 'required|after:start_time',
             'shift_type' => 'required|in:morning,afternoon,evening,full_day',
             'notes' => 'nullable|string|max:500',
         ]);
@@ -831,30 +829,33 @@ class BranchManagerController extends Controller
         $user = auth()->user();
         $branchId = $user->branch_id;
 
+        // Define shift times
+        $shiftTimes = [
+            'morning' => ['start' => '06:00', 'end' => '14:00'],
+            'afternoon' => ['start' => '14:00', 'end' => '22:00'],
+            'evening' => ['start' => '18:00', 'end' => '00:00'],
+            'full_day' => ['start' => '09:00', 'end' => '18:00'],
+        ];
+
+        $startTime = $shiftTimes[$request->shift_type]['start'];
+        $endTime = $shiftTimes[$request->shift_type]['end'];
+
         // Verify the staff belongs to this branch
         $staff = User::where('id', $request->staff_id)
             ->where('branch_id', $branchId)
             ->where('role', 'staff')
             ->firstOrFail();
 
-        // Check for overlapping schedules
-        $overlap = StaffSchedule::where('staff_id', $request->staff_id)
+        // Check for existing schedule on the same day (one shift per day)
+        $existingSchedule = StaffSchedule::where('staff_id', $request->staff_id)
             ->where('schedule_date', $request->schedule_date)
             ->where('status', '!=', 'cancelled')
-            ->where(function ($query) use ($request) {
-                $query->whereBetween('start_time', [$request->start_time, $request->end_time])
-                    ->orWhereBetween('end_time', [$request->start_time, $request->end_time])
-                    ->orWhere(function ($q) use ($request) {
-                        $q->where('start_time', '<=', $request->start_time)
-                          ->where('end_time', '>=', $request->end_time);
-                    });
-            })
             ->exists();
 
-        if ($overlap) {
+        if ($existingSchedule) {
             return response()->json([
                 'success' => false,
-                'message' => 'This staff already has a schedule during this time slot.'
+                'message' => 'This staff already has a schedule for this date.'
             ], 422);
         }
 
@@ -863,8 +864,8 @@ class BranchManagerController extends Controller
             'branch_id' => $branchId,
             'created_by' => $user->id,
             'schedule_date' => $request->schedule_date,
-            'start_time' => $request->start_time,
-            'end_time' => $request->end_time,
+            'start_time' => $startTime,
+            'end_time' => $endTime,
             'shift_type' => $request->shift_type,
             'status' => 'scheduled',
             'notes' => $request->notes,
