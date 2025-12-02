@@ -8,7 +8,7 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="card shadow-sm">
-                <div class="card-header" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
+                <div class="card-header" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="mb-0 text-white">
                             <i class="bi bi-graph-up"></i> KPI & Benchmark Management
@@ -28,7 +28,7 @@
     <!-- Current Benchmarks -->
     <div class="row g-4 mb-4">
         <div class="col-md-6">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                 <div class="card-body text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -47,7 +47,7 @@
         </div>
 
         <div class="col-md-6">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                 <div class="card-body text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -183,7 +183,7 @@
                                 <tr>
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            <div class="user-avatar me-2" style="width: 35px; height: 35px; font-size: 1rem; background: linear-gradient(135deg, #D35400 0%, #E67E22 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                                            <div class="user-avatar me-2" style="width: 35px; height: 35px; font-size: 1rem; background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
                                                 {{ substr($staff->name, 0, 1) }}
                                             </div>
                                             {{ $staff->name }}
@@ -280,15 +280,15 @@ document.addEventListener('DOMContentLoaded', function() {
             datasets: [{
                 label: 'Current Sales (RM)',
                 data: staffKPIData.sales,
-                backgroundColor: 'rgba(145, 118, 110, 0.8)',
-                borderColor: '#D35400',
+                backgroundColor: 'rgba(66, 58, 142, 0.8)',
+                borderColor: '#423A8E',
                 borderWidth: 2,
                 borderRadius: 5
             }, {
                 label: 'Target (RM)',
                 data: staffKPIData.targets,
-                backgroundColor: 'rgba(183, 167, 169, 0.3)',
-                borderColor: '#E67E22',
+                backgroundColor: 'rgba(0, 204, 205, 0.3)',
+                borderColor: '#00CCCD',
                 borderWidth: 2,
                 borderRadius: 5,
                 borderDash: [5, 5]
@@ -325,3 +325,5 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 @endpush
 @endsection
+
+

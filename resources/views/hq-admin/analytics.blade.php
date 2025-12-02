@@ -8,7 +8,7 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="card shadow-sm">
-                <div class="card-header" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
+                <div class="card-header" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                     <h5 class="mb-0 text-white">
                         <i class="bi bi-graph-up-arrow"></i> Branch Performance Analytics
                     </h5>
@@ -82,7 +82,7 @@
                                     <div class="card bg-light">
                                         <div class="card-body text-center">
                                             <small class="text-muted">Branch Manager</small>
-                                            <div class="user-avatar mx-auto my-2" style="width: 50px; height: 50px; font-size: 1.2rem; background: linear-gradient(135deg, #D35400 0%, #E67E22 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                                            <div class="user-avatar mx-auto my-2" style="width: 50px; height: 50px; font-size: 1.2rem; background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
                                                 {{ substr($branch->manager->name ?? 'N', 0, 1) }}
                                             </div>
                                             <strong>{{ $branch->manager->name ?? 'Not Assigned' }}</strong>
@@ -175,8 +175,8 @@ document.addEventListener('DOMContentLoaded', function() {
             datasets: comparisonData.datasets.map((dataset, index) => ({
                 label: dataset.name,
                 data: dataset.values,
-                borderColor: ['#D35400', '#E67E22', '#C0392B'][index],
-                backgroundColor: ['rgba(145, 118, 110, 0.1)', 'rgba(183, 167, 169, 0.1)', 'rgba(107, 87, 80, 0.1)'][index],
+                borderColor: ['#423A8E', '#00CCCD', '#3d3581'][index],
+                backgroundColor: ['rgba(66, 58, 142, 0.1)', 'rgba(0, 204, 205, 0.1)', 'rgba(107, 87, 80, 0.1)'][index],
                 tension: 0.4,
                 fill: true
             }))
@@ -214,3 +214,5 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 @endpush
 @endsection
+
+

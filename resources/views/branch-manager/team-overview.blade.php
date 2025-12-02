@@ -8,7 +8,7 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="card shadow-sm">
-                <div class="card-header" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
+                <div class="card-header" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                     <h5 class="mb-0 text-white">
                         <i class="bi bi-people"></i> Team Overview
                     </h5>
@@ -30,7 +30,7 @@
                 <div class="card-body">
                     <div class="row align-items-center">
                         <div class="col-md-2 text-center">
-                            <div class="user-avatar mx-auto" style="width: 100px; height: 100px; font-size: 3rem; background: linear-gradient(135deg, #D35400 0%, #E67E22 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                            <div class="user-avatar mx-auto" style="width: 100px; height: 100px; font-size: 3rem; background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
                                 {{ substr($branchManager->name, 0, 1) }}
                             </div>
                         </div>
@@ -85,7 +85,7 @@
                             <div class="card shadow-sm h-100">
                                 <div class="card-body">
                                     <div class="text-center mb-3">
-                                        <div class="user-avatar mx-auto" style="width: 70px; height: 70px; font-size: 2rem; background: linear-gradient(135deg, #D35400 0%, #E67E22 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                                        <div class="user-avatar mx-auto" style="width: 70px; height: 70px; font-size: 2rem; background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
                                             {{ substr($staff->name, 0, 1) }}
                                         </div>
                                     </div>
@@ -231,8 +231,8 @@ function viewStaffPerformance(staffId) {
                         datasets: [{
                             label: 'Daily Sales',
                             data: data.chartData.values,
-                            borderColor: '#D35400',
-                            backgroundColor: 'rgba(145, 118, 110, 0.1)',
+                            borderColor: '#423A8E',
+                            backgroundColor: 'rgba(66, 58, 142, 0.1)',
                             tension: 0.4,
                             fill: true
                         }]
@@ -274,3 +274,5 @@ function viewStaffSchedule(staffId) {
 </script>
 @endpush
 @endsection
+
+

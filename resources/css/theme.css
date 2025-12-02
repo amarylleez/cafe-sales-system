@@ -1,24 +1,24 @@
 /* 
- * Cafe Sales System - Food Kiosk Theme
+ * Cafe Sales System - Breeze Vibrant Theme
  * Color Palette:
- * - Primary: #D35400 (Burnt Orange)
- * - Secondary: #E67E22 (Carrot Orange)
- * - Accent: #F39C12 (Sunflower Yellow)
- * - Dark: #2C3E50 (Dark Blue-Gray)
- * - Light: #FDF6E3 (Cream)
+ * - Primary: #423A8E (Deep Purple)
+ * - Secondary: #00CCCD (Cyan/Teal)
+ * - Accent: #FFC107 (Gold/Yellow)
+ * - Dark: #423A8E (Deep Purple)
+ * - Light: #F8F9FA (Light Gray)
  */
 
 :root {
-    --color-primary: #D35400;
-    --color-secondary: #E67E22;
-    --color-accent: #F39C12;
-    --color-dark: #2C3E50;
-    --color-light: #FDF6E3;
+    --color-primary: #423A8E;
+    --color-secondary: #00CCCD;
+    --color-accent: #FFC107;
+    --color-dark: #423A8E;
+    --color-light: #F8F9FA;
     --color-white: #FFFFFF;
     
     /* Semantic colors */
-    --color-success: #27AE60;
-    --color-warning: #F39C12;
-    --color-danger: #E74C3C;
-    --color-info: #3498DB;
+    --color-success: #198754;
+    --color-warning: #FFC107;
+    --color-danger: #DC3545;
+    --color-info: #0D6EFD;
 }

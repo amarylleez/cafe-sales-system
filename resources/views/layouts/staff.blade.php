@@ -17,11 +17,11 @@
         :root {
             --sidebar-width: 250px;
             --sidebar-collapsed-width: 80px;
-            --color-primary: #D35400;
-            --color-secondary: #E67E22;
-            --color-accent: #F39C12;
-            --color-dark: #2C3E50;
-            --color-light: #FDF6E3;
+            --color-primary: #423A8E;
+            --color-secondary: #00CCCD;
+            --color-accent: #FFC107;
+            --color-dark: #423A8E;
+            --color-light: #F8F9FA;
         }
         
         * {
@@ -50,7 +50,7 @@
             left: 0;
             height: 100vh;
             width: var(--sidebar-width);
-            background: linear-gradient(180deg, #2C3E50 0%, #1a252f 100%);
+            background: linear-gradient(180deg, #423A8E 0%, #1a252f 100%);
             transition: width 0.3s ease;
             z-index: 1000;
             overflow-x: hidden;
@@ -209,7 +209,7 @@
             width: 40px;
             height: 40px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);
+            background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -471,3 +471,5 @@
     @stack('scripts')
 </body>
 </html>
+
+

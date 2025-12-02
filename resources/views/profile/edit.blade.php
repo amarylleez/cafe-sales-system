@@ -7,7 +7,7 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="card shadow-sm">
-                <div class="card-header" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
+                <div class="card-header" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                     <h5 class="mb-0 text-white">
                         <i class="bi bi-gear"></i> Profile Settings
                     </h5>
@@ -94,7 +94,7 @@
             <div class="card shadow-sm border-info">
                 <div class="card-body text-center">
                     <div class="mb-3">
-                        <div class="user-avatar mx-auto" style="width: 80px; height: 80px; font-size: 2rem; background: linear-gradient(135deg, #D35400 0%, #E67E22 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                        <div class="user-avatar mx-auto" style="width: 80px; height: 80px; font-size: 2rem; background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
                             {{ substr($user->name, 0, 1) }}
                         </div>
                     </div>
@@ -212,3 +212,5 @@
     </div>
 </div>
 @endsection
+
+

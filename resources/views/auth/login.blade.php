@@ -32,7 +32,7 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: linear-gradient(135deg, #D35400 0%, #E67E22 50%, #FDF6E3 100%);
+            background: linear-gradient(135deg, #423A8E 0%, #00CCCD 50%, #F8F9FA 100%);
             opacity: 0.3;
             z-index: 0;
         }
@@ -295,3 +295,5 @@
     </div>
 </body>
 </html>
+
+

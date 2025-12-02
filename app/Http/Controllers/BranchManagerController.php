@@ -242,6 +242,73 @@ class BranchManagerController extends Controller
     }
 
     /**
+     * Export sales report to Excel/CSV
+     */
+    public function exportSalesReport(Request $request)
+    {
+        $user = auth()->user();
+        $branchId = $user->branch_id;
+        $branch = $user->branch;
+
+        // Get all sales for this branch
+        $sales = DailySale::where('branch_id', $branchId)
+            ->with(['staff', 'items.product'])
+            ->orderBy('sale_date', 'desc')
+            ->get();
+
+        // Generate CSV
+        $filename = 'sales_report_' . $branch->name . '_' . date('Y-m-d') . '.csv';
+        
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function() use ($sales) {
+            $file = fopen('php://output', 'w');
+            
+            // CSV Header
+            fputcsv($file, [
+                'Transaction ID',
+                'Date',
+                'Staff',
+                'Items',
+                'Total Amount (RM)',
+                'Payment Method',
+                'Status',
+                'Verified By',
+                'Notes'
+            ]);
+
+            // CSV Data
+            foreach ($sales as $sale) {
+                $itemsList = $sale->items->map(function($item) {
+                    return $item->product->name . ' x' . $item->quantity;
+                })->implode(', ');
+
+                // Format date in a way Excel will recognize and display properly
+                $dateFormatted = \Carbon\Carbon::parse($sale->sale_date)->format('Y-m-d');
+
+                fputcsv($file, [
+                    $sale->transaction_id,
+                    $dateFormatted,
+                    $sale->staff->name ?? 'N/A',
+                    $itemsList,
+                    $sale->total_amount, // Raw number without formatting for Excel
+                    ucfirst(str_replace('_', ' ', $sale->payment_method)),
+                    ucfirst($sale->status),
+                    $sale->verifier->name ?? 'Pending',
+                    $sale->notes ?? ''
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
      * Show KPI & Benchmark page
      */
     public function kpiBenchmark()

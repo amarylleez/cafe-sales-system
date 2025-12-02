@@ -44,7 +44,7 @@
         </div>
         
         <div class="col-md-6">
-            <div class="card shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
+            <div class="card shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                 <div class="card-body text-white">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
@@ -251,9 +251,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (categoryCtx) {
         const colors = [
-            '#D35400', '#E67E22', '#C0392B', '#F39C12', '#FDF6E3', 
-            '#E74C3C', '#FEF5E7', '#D35400', '#E67E22', '#2C3E50',
-            '#F5D6BA', '#E67E22', '#F39C12', '#FDF6E3'
+            '#423A8E', '#00CCCD', '#3d3581', '#FFC107', '#F8F9FA', 
+            '#E74C3C', '#FEF5E7', '#423A8E', '#00CCCD', '#423A8E',
+            '#F5D6BA', '#00CCCD', '#FFC107', '#F8F9FA'
         ];
         
         new Chart(categoryCtx, {
@@ -349,3 +349,5 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 @endpush
 @endsection
+
+

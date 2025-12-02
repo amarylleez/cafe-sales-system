@@ -8,7 +8,7 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="card shadow-sm">
-                <div class="card-header" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
+                <div class="card-header" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                     <h5 class="mb-0 text-white">
                         <i class="bi bi-file-earmark-text"></i> Unified Sales Reports
                     </h5>
@@ -85,7 +85,7 @@
     <!-- Summary Cards -->
     <div class="row g-4 mb-4">
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                 <div class="card-body text-white text-center">
                     <small class="opacity-75">Total Sales</small>
                     <h3 class="mb-0 mt-2">RM {{ number_format($reportSummary['totalSales'], 2) }}</h3>
@@ -93,7 +93,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                 <div class="card-body text-white text-center">
                     <small class="opacity-75">Total Reports</small>
                     <h3 class="mb-0 mt-2">{{ $reportSummary['totalReports'] }}</h3>
@@ -101,7 +101,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                 <div class="card-body text-white text-center">
                     <small class="opacity-75">Verified Reports</small>
                     <h3 class="mb-0 mt-2">{{ $reportSummary['verifiedReports'] }}</h3>
@@ -109,7 +109,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                 <div class="card-body text-white text-center">
                     <small class="opacity-75">Pending Verification</small>
                     <h3 class="mb-0 mt-2">{{ $reportSummary['pendingReports'] }}</h3>
@@ -148,7 +148,7 @@
                                     <td>{{ $report->branch->name }}</td>
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            <div class="user-avatar me-2" style="width: 30px; height: 30px; font-size: 0.9rem; background: linear-gradient(135deg, #D35400 0%, #E67E22 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                                            <div class="user-avatar me-2" style="width: 30px; height: 30px; font-size: 0.9rem; background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
                                                 {{ substr($report->staff->name, 0, 1) }}
                                             </div>
                                             {{ $report->staff->name }}
@@ -402,3 +402,5 @@ function resetFilter() {
 </script>
 @endpush
 @endsection
+
+

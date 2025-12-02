@@ -29,12 +29,12 @@
             text-align: center;
             margin-bottom: 20px;
             padding-bottom: 15px;
-            border-bottom: 2px dashed #D35400;
+            border-bottom: 2px dashed #423A8E;
         }
         
         .header h1 {
             font-size: 20px;
-            color: #D35400;
+            color: #423A8E;
             margin-bottom: 5px;
         }
         
@@ -84,7 +84,7 @@
         .summary-section h3 {
             text-align: center;
             margin-bottom: 15px;
-            color: #D35400;
+            color: #423A8E;
             font-size: 14px;
             text-transform: uppercase;
         }
@@ -108,14 +108,14 @@
         }
         
         .total-row {
-            border-top: 2px solid #D35400;
+            border-top: 2px solid #423A8E;
             padding-top: 10px;
             margin-top: 10px;
         }
         
         .total-row .value {
             font-size: 18px;
-            color: #D35400;
+            color: #423A8E;
         }
         
         .status {
@@ -144,12 +144,12 @@
             margin-bottom: 20px;
             padding: 10px;
             background-color: #f8f9fa;
-            border-left: 3px solid #D35400;
+            border-left: 3px solid #423A8E;
         }
         
         .notes h4 {
             margin-bottom: 5px;
-            color: #D35400;
+            color: #423A8E;
         }
         
         .footer {
@@ -243,4 +243,6 @@
     </div>
 </body>
 </html>
+
+
 

@@ -30,7 +30,7 @@
     <!-- Staff Personal Target Card -->
     <div class="row mb-4">
         <div class="col-md-6">
-            <div class="card shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
+            <div class="card shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                 <div class="card-body text-white">
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
@@ -403,3 +403,5 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 @endpush
 @endsection
+
+

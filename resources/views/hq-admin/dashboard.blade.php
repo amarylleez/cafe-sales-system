@@ -23,7 +23,7 @@
     <!-- Key Metrics -->
     <div class="row g-4 mb-4">
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                 <div class="card-body text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -42,7 +42,7 @@
         </div>
 
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                 <div class="card-body text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -61,7 +61,7 @@
         </div>
 
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                 <div class="card-body text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -80,7 +80,7 @@
         </div>
 
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                 <div class="card-body text-white">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
@@ -186,7 +186,7 @@
                             <div class="card bg-light">
                                 <div class="card-body text-center">
                                     <h6 class="text-muted">Branch Manager</h6>
-                                    <div class="user-avatar mx-auto mb-2" style="width: 60px; height: 60px; font-size: 1.5rem; background: linear-gradient(135deg, #D35400 0%, #E67E22 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                                    <div class="user-avatar mx-auto mb-2" style="width: 60px; height: 60px; font-size: 1.5rem; background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
                                         {{ substr($topBranch->manager->name ?? 'N', 0, 1) }}
                                     </div>
                                     <strong>{{ $topBranch->manager->name ?? 'Not Assigned' }}</strong>
@@ -244,7 +244,7 @@
                                     </td>
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            <div class="user-avatar me-2" style="width: 30px; height: 30px; font-size: 0.9rem; background: linear-gradient(135deg, #D35400 0%, #E67E22 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                                            <div class="user-avatar me-2" style="width: 30px; height: 30px; font-size: 0.9rem; background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
                                                 {{ substr($branch->manager->name ?? 'N', 0, 1) }}
                                             </div>
                                             {{ $branch->manager->name ?? 'Not Assigned' }}
@@ -293,14 +293,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 label: 'Sales (RM)',
                 data: branchSalesData.values,
                 backgroundColor: [
-                    'rgba(145, 118, 110, 0.8)',
-                    'rgba(183, 167, 169, 0.8)',
+                    'rgba(66, 58, 142, 0.8)',
+                    'rgba(0, 204, 205, 0.8)',
                     'rgba(246, 236, 227, 0.8)'
                 ],
                 borderColor: [
-                    '#D35400',
-                    '#E67E22',
-                    '#D35400'
+                    '#423A8E',
+                    '#00CCCD',
+                    '#423A8E'
                 ],
                 borderWidth: 2,
                 borderRadius: 5
@@ -336,3 +336,5 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 @endpush
 @endsection
+
+

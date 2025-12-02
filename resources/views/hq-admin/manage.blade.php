@@ -8,7 +8,7 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="card shadow-sm">
-                <div class="card-header" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
+                <div class="card-header" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="mb-0 text-white">
                             <i class="bi bi-people"></i> Staff Management
@@ -28,7 +28,7 @@
     <!-- Summary Cards -->
     <div class="row g-4 mb-4">
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                 <div class="card-body text-white text-center">
                     <h3>{{ $totalStaff }}</h3>
                     <small>Total Staff</small>
@@ -36,7 +36,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                 <div class="card-body text-white text-center">
                     <h3>{{ $branchManagers }}</h3>
                     <small>Branch Managers</small>
@@ -44,7 +44,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                 <div class="card-body text-white text-center">
                     <h3>{{ $staffMembers }}</h3>
                     <small>Staff Members</small>
@@ -52,7 +52,7 @@
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card shadow-sm" style="background: linear-gradient(135deg, #D35400 0%, #E67E22 100%);">
+            <div class="card shadow-sm" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                 <div class="card-body text-white text-center">
                     <h3>{{ $hqAdmins }}</h3>
                     <small>HQ Admins</small>
@@ -100,7 +100,7 @@
                             <div class="card shadow-sm h-100">
                                 <div class="card-body">
                                     <div class="text-center mb-3">
-                                        <div class="user-avatar mx-auto" style="width: 70px; height: 70px; font-size: 2rem; background: linear-gradient(135deg, #D35400 0%, #E67E22 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
+                                        <div class="user-avatar mx-auto" style="width: 70px; height: 70px; font-size: 2rem; background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;">
                                             {{ substr($staff->name, 0, 1) }}
                                         </div>
                                     </div>
@@ -361,3 +361,5 @@ function deleteStaff(staffId, name) {
 </script>
 @endpush
 @endsection
+
+

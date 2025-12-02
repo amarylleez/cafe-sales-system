@@ -21,12 +21,12 @@
             text-align: center;
             margin-bottom: 30px;
             padding-bottom: 20px;
-            border-bottom: 2px solid #D35400;
+            border-bottom: 2px solid #423A8E;
         }
         
         .header h1 {
             font-size: 24px;
-            color: #D35400;
+            color: #423A8E;
             margin-bottom: 5px;
         }
         
@@ -44,7 +44,7 @@
         
         .summary h3 {
             margin-bottom: 10px;
-            color: #D35400;
+            color: #423A8E;
         }
         
         .summary-grid {
@@ -84,7 +84,7 @@
         }
         
         th {
-            background-color: #D35400;
+            background-color: #423A8E;
             color: white;
             font-weight: bold;
             font-size: 11px;
@@ -137,7 +137,7 @@
         }
         
         .total-row td {
-            border-top: 2px solid #D35400;
+            border-top: 2px solid #423A8E;
         }
     </style>
 </head>
@@ -228,4 +228,6 @@
     </div>
 </body>
 </html>
+
+
 
