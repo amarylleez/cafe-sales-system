@@ -11,6 +11,7 @@ use App\Models\Category;
 use App\Models\Notification;
 use App\Models\Benchmark;
 use App\Models\BranchStock;
+use App\Models\StaffSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -711,5 +712,80 @@ class StaffController extends Controller
                 'message' => 'Failed to adjust stock: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * Display staff's own schedule
+     */
+    public function mySchedule(Request $request)
+    {
+        $user = auth()->user();
+        $branchId = $user->branch_id;
+        $branch = $user->branch;
+
+        // Get week offset from request (for navigation)
+        $weekOffset = (int) $request->input('week', 0);
+        $weekStart = Carbon::now()->startOfWeek()->addWeeks($weekOffset);
+        $weekEnd = $weekStart->copy()->endOfWeek();
+
+        // Get schedules for this week
+        $schedules = StaffSchedule::where('staff_id', $user->id)
+            ->whereBetween('schedule_date', [$weekStart, $weekEnd])
+            ->orderBy('schedule_date')
+            ->orderBy('start_time')
+            ->get();
+
+        // Get upcoming schedules (next 7 days)
+        $upcomingSchedules = StaffSchedule::where('staff_id', $user->id)
+            ->where('schedule_date', '>=', Carbon::today())
+            ->where('schedule_date', '<=', Carbon::today()->addDays(7))
+            ->whereIn('status', ['scheduled', 'confirmed'])
+            ->orderBy('schedule_date')
+            ->orderBy('start_time')
+            ->get();
+
+        // Get this month's total scheduled hours
+        $monthSchedules = StaffSchedule::where('staff_id', $user->id)
+            ->whereMonth('schedule_date', Carbon::now()->month)
+            ->whereYear('schedule_date', Carbon::now()->year)
+            ->whereIn('status', ['scheduled', 'confirmed', 'completed'])
+            ->get();
+
+        $totalHours = 0;
+        foreach ($monthSchedules as $schedule) {
+            $start = Carbon::parse($schedule->start_time);
+            $end = Carbon::parse($schedule->end_time);
+            $totalHours += $end->diffInHours($start);
+        }
+
+        return view('staff.my-schedule', compact(
+            'schedules',
+            'upcomingSchedules',
+            'weekStart',
+            'weekEnd',
+            'weekOffset',
+            'totalHours',
+            'branch'
+        ));
+    }
+
+    /**
+     * Confirm a schedule (staff acknowledging their shift)
+     */
+    public function confirmSchedule($id)
+    {
+        $user = auth()->user();
+
+        $schedule = StaffSchedule::where('id', $id)
+            ->where('staff_id', $user->id)
+            ->where('status', 'scheduled')
+            ->firstOrFail();
+
+        $schedule->update(['status' => 'confirmed']);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Schedule confirmed successfully.'
+        ]);
     }
 }

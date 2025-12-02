@@ -264,12 +264,90 @@ function viewStaffPerformance(staffId) {
 // View staff schedule
 function viewStaffSchedule(staffId) {
     document.getElementById('scheduleContent').innerHTML = `
-        <div class="alert alert-info">
-            <i class="bi bi-info-circle"></i> Staff scheduling feature coming soon!
+        <div class="text-center">
+            <div class="spinner-border" role="status"></div>
         </div>
     `;
     
     scheduleModal.show();
+    
+    fetch(`/branch-manager/staff/${staffId}/schedule`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const staff = data.staff;
+                const schedules = data.schedules;
+                
+                let scheduleHtml = '';
+                if (schedules.length > 0) {
+                    scheduleHtml = `
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Time</th>
+                                        <th>Shift</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${schedules.map(s => `
+                                        <tr>
+                                            <td>${new Date(s.schedule_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</td>
+                                            <td>${s.start_time} - ${s.end_time}</td>
+                                            <td>${s.shift_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</td>
+                                            <td><span class="badge ${getStatusBadge(s.status)}">${s.status.replace(/\b\w/g, l => l.toUpperCase())}</span></td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                } else {
+                    scheduleHtml = `
+                        <div class="alert alert-info mb-0">
+                            <i class="bi bi-info-circle"></i> No schedules found for this staff member.
+                        </div>
+                    `;
+                }
+                
+                document.getElementById('scheduleContent').innerHTML = `
+                    <div class="text-center mb-3">
+                        <div class="user-avatar mx-auto mb-2" style="width: 60px; height: 60px; font-size: 1.5rem; background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white;">
+                            ${staff.name.charAt(0)}
+                        </div>
+                        <h5>${staff.name}</h5>
+                        <small class="text-muted">${staff.email}</small>
+                    </div>
+                    <hr>
+                    <h6 class="mb-3"><i class="bi bi-calendar3"></i> Upcoming Schedules</h6>
+                    ${scheduleHtml}
+                    <div class="mt-3 text-center">
+                        <a href="/branch-manager/staff-schedule" class="btn btn-primary btn-sm">
+                            <i class="bi bi-calendar-week"></i> Manage All Schedules
+                        </a>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('scheduleContent').innerHTML = `
+                <div class="alert alert-danger">Failed to load schedule data</div>
+            `;
+        });
+}
+
+function getStatusBadge(status) {
+    const badges = {
+        'scheduled': 'bg-info',
+        'confirmed': 'bg-primary',
+        'completed': 'bg-success',
+        'absent': 'bg-danger',
+        'cancelled': 'bg-secondary'
+    };
+    return badges[status] || 'bg-secondary';
 }
 </script>
 @endpush

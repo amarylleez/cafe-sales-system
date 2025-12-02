@@ -83,6 +83,13 @@ Route::middleware(['auth'])->prefix('branch-manager')->name('branch-manager.')->
     // Team Overview
     Route::get('/team-overview', [BranchManagerController::class, 'teamOverview'])->name('team-overview');
     Route::get('/staff/{staffId}/performance', [BranchManagerController::class, 'getStaffPerformance'])->name('staff.performance');
+    Route::get('/staff/{staffId}/schedule', [BranchManagerController::class, 'getStaffSchedule'])->name('staff.schedule');
+    
+    // Staff Schedule
+    Route::get('/staff-schedule', [BranchManagerController::class, 'staffSchedule'])->name('staff-schedule');
+    Route::post('/staff-schedule', [BranchManagerController::class, 'storeSchedule'])->name('staff-schedule.store');
+    Route::patch('/staff-schedule/{id}/status', [BranchManagerController::class, 'updateScheduleStatus'])->name('staff-schedule.status');
+    Route::delete('/staff-schedule/{id}', [BranchManagerController::class, 'deleteSchedule'])->name('staff-schedule.delete');
     
     // Inventory
     Route::get('/inventory', [BranchManagerController::class, 'inventory'])->name('inventory');
@@ -109,6 +116,10 @@ Route::middleware(['auth'])->prefix('staff')->name('staff.')->group(function () 
     // KPI Routes
     Route::get('/kpi', [StaffController::class, 'kpi'])->name('kpi');
     Route::post('/kpi/{kpiId}/toggle-completion', [StaffController::class, 'toggleKPICompletion'])->name('kpi.toggle');
+    
+    // My Schedule Routes
+    Route::get('/my-schedule', [StaffController::class, 'mySchedule'])->name('my-schedule');
+    Route::post('/schedule/{id}/confirm', [StaffController::class, 'confirmSchedule'])->name('schedule.confirm');
     
     // Dashboard Sub-pages
     Route::get('/dashboard/target', [StaffController::class, 'targetOverview'])->name('dashboard.target');

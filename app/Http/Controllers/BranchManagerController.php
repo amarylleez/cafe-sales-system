@@ -11,6 +11,7 @@ use App\Models\Branch;
 use App\Models\Benchmark;
 use App\Models\BranchStock;
 use App\Models\Notification;
+use App\Models\StaffSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -765,5 +766,188 @@ class BranchManagerController extends Controller
         $notification->update(['is_read' => true]);
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Display staff schedule page
+     */
+    public function staffSchedule(Request $request)
+    {
+        $user = auth()->user();
+        $branchId = $user->branch_id;
+        $branch = $user->branch;
+
+        // Get staff members for this branch
+        $staffMembers = User::where('branch_id', $branchId)
+            ->where('role', 'staff')
+            ->orderBy('name')
+            ->get();
+
+        // Get week offset from request (for navigation)
+        $weekOffset = (int) $request->input('week', 0);
+        $weekStart = Carbon::now()->startOfWeek()->addWeeks($weekOffset);
+        $weekEnd = $weekStart->copy()->endOfWeek();
+
+        // Get schedules for this week
+        $schedules = StaffSchedule::where('branch_id', $branchId)
+            ->whereBetween('schedule_date', [$weekStart, $weekEnd])
+            ->with('staff')
+            ->orderBy('schedule_date')
+            ->orderBy('start_time')
+            ->get();
+
+        // Group schedules by date and staff
+        $schedulesByDate = [];
+        for ($date = $weekStart->copy(); $date <= $weekEnd; $date->addDay()) {
+            $dateKey = $date->format('Y-m-d');
+            $schedulesByDate[$dateKey] = $schedules->where('schedule_date', $date->format('Y-m-d'));
+        }
+
+        return view('branch-manager.staff-schedule', compact(
+            'staffMembers', 
+            'schedules', 
+            'schedulesByDate',
+            'weekStart', 
+            'weekEnd', 
+            'weekOffset',
+            'branch'
+        ));
+    }
+
+    /**
+     * Store a new staff schedule
+     */
+    public function storeSchedule(Request $request)
+    {
+        $request->validate([
+            'staff_id' => 'required|exists:users,id',
+            'schedule_date' => 'required|date',
+            'start_time' => 'required',
+            'end_time' => 'required|after:start_time',
+            'shift_type' => 'required|in:morning,afternoon,evening,full_day',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $user = auth()->user();
+        $branchId = $user->branch_id;
+
+        // Verify the staff belongs to this branch
+        $staff = User::where('id', $request->staff_id)
+            ->where('branch_id', $branchId)
+            ->where('role', 'staff')
+            ->firstOrFail();
+
+        // Check for overlapping schedules
+        $overlap = StaffSchedule::where('staff_id', $request->staff_id)
+            ->where('schedule_date', $request->schedule_date)
+            ->where('status', '!=', 'cancelled')
+            ->where(function ($query) use ($request) {
+                $query->whereBetween('start_time', [$request->start_time, $request->end_time])
+                    ->orWhereBetween('end_time', [$request->start_time, $request->end_time])
+                    ->orWhere(function ($q) use ($request) {
+                        $q->where('start_time', '<=', $request->start_time)
+                          ->where('end_time', '>=', $request->end_time);
+                    });
+            })
+            ->exists();
+
+        if ($overlap) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This staff already has a schedule during this time slot.'
+            ], 422);
+        }
+
+        $schedule = StaffSchedule::create([
+            'staff_id' => $request->staff_id,
+            'branch_id' => $branchId,
+            'created_by' => $user->id,
+            'schedule_date' => $request->schedule_date,
+            'start_time' => $request->start_time,
+            'end_time' => $request->end_time,
+            'shift_type' => $request->shift_type,
+            'status' => 'scheduled',
+            'notes' => $request->notes,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Schedule created successfully.',
+            'schedule' => $schedule->load('staff')
+        ]);
+    }
+
+    /**
+     * Get staff schedule for modal
+     */
+    public function getStaffSchedule($staffId, Request $request)
+    {
+        $user = auth()->user();
+        $branchId = $user->branch_id;
+
+        // Verify staff belongs to this branch
+        $staff = User::where('id', $staffId)
+            ->where('branch_id', $branchId)
+            ->firstOrFail();
+
+        // Get schedules for current and next 2 weeks
+        $startDate = Carbon::now()->startOfWeek();
+        $endDate = Carbon::now()->addWeeks(2)->endOfWeek();
+
+        $schedules = StaffSchedule::where('staff_id', $staffId)
+            ->whereBetween('schedule_date', [$startDate, $endDate])
+            ->orderBy('schedule_date')
+            ->orderBy('start_time')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'staff' => $staff,
+            'schedules' => $schedules
+        ]);
+    }
+
+    /**
+     * Update schedule status
+     */
+    public function updateScheduleStatus(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|in:scheduled,confirmed,completed,absent,cancelled'
+        ]);
+
+        $user = auth()->user();
+        $branchId = $user->branch_id;
+
+        $schedule = StaffSchedule::where('id', $id)
+            ->where('branch_id', $branchId)
+            ->firstOrFail();
+
+        $schedule->update(['status' => $request->status]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Schedule status updated successfully.'
+        ]);
+    }
+
+    /**
+     * Delete a schedule
+     */
+    public function deleteSchedule($id)
+    {
+        $user = auth()->user();
+        $branchId = $user->branch_id;
+
+        $schedule = StaffSchedule::where('id', $id)
+            ->where('branch_id', $branchId)
+            ->firstOrFail();
+
+        $schedule->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Schedule deleted successfully.'
+        ]);
     }
 }

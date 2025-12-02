@@ -311,6 +311,12 @@
                 </a>
             </li>
             <li class="sidebar-menu-item">
+                <a href="{{ route('branch-manager.staff-schedule') }}" class="sidebar-menu-link {{ request()->routeIs('branch-manager.staff-schedule') ? 'active' : '' }}">
+                    <i class="bi bi-calendar-week sidebar-menu-icon"></i>
+                    <span class="sidebar-menu-text">Staff Schedule</span>
+                </a>
+            </li>
+            <li class="sidebar-menu-item">
                 <a href="{{ route('branch-manager.alerts') }}" class="sidebar-menu-link {{ request()->routeIs('branch-manager.alerts') ? 'active' : '' }}">
                     <i class="bi bi-bell sidebar-menu-icon"></i>
                     <span class="sidebar-menu-text">Alerts</span>
