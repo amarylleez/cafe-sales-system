@@ -420,7 +420,7 @@ class BranchManagerController extends Controller
     /**
      * Show team overview page
      */
-    public function teamOverview()
+    public function teamOverview(Request $request)
     {
         $user = auth()->user();
         $branchId = $user->branch_id;
@@ -433,7 +433,18 @@ class BranchManagerController extends Controller
             ->where('id', '!=', $user->id)
             ->get();
 
-        return view('branch-manager.team-overview', compact('branchManager', 'staffMembers'));
+        // Get week offset for schedule navigation
+        $weekOffset = $request->get('week', 0);
+        $weekStart = Carbon::now()->startOfWeek()->addWeeks($weekOffset);
+        $weekEnd = $weekStart->copy()->endOfWeek();
+
+        // Get schedules for the week
+        $schedules = StaffSchedule::with('staff')
+            ->where('branch_id', $branchId)
+            ->whereBetween('schedule_date', [$weekStart, $weekEnd])
+            ->get();
+
+        return view('branch-manager.team-overview', compact('branchManager', 'staffMembers', 'weekStart', 'weekEnd', 'weekOffset', 'schedules'));
     }
 
     /**
@@ -914,7 +925,7 @@ class BranchManagerController extends Controller
     public function updateScheduleStatus(Request $request, $id)
     {
         $request->validate([
-            'status' => 'required|in:scheduled,confirmed,completed,absent,cancelled'
+            'status' => 'required|in:scheduled,confirmed,clocked_in,completed,absent,cancelled'
         ]);
 
         $user = auth()->user();

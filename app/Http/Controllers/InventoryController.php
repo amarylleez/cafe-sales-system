@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\BranchStock;
 use Illuminate\Http\Request;
 
 class InventoryController extends Controller
@@ -13,14 +14,29 @@ class InventoryController extends Controller
     public function show($id)
     {
         $product = Product::with('category')->findOrFail($id);
+        
+        // Get branch-specific stock
+        $user = auth()->user();
+        $branchId = $user->branch_id;
+        
+        $branchStock = BranchStock::where('branch_id', $branchId)
+            ->where('product_id', $id)
+            ->first();
+        
+        $stockQuantity = $branchStock ? $branchStock->stock_quantity : 0;
+        $isAvailable = $branchStock ? $branchStock->is_available : true;
 
-        // Calculate sales statistics for this product
+        // Calculate sales statistics for this product (branch-specific)
         $statistics = [
-            'total_sold' => $product->getTotalSold() ?? 0,
-            'total_revenue' => $product->getTotalRevenue() ?? 0,
+            'total_sold' => $product->getTotalSold($branchId) ?? 0,
+            'total_revenue' => $product->getTotalRevenue($branchId) ?? 0,
             'added_date' => $product->created_at->format('d M Y'),
-            'stock_quantity' => $product->stock_quantity ?? 0,
+            'stock_quantity' => $stockQuantity,
         ];
+        
+        // Override product's stock and availability with branch-specific values
+        $product->stock_quantity = $stockQuantity;
+        $product->is_available = $isAvailable;
 
         return response()->json([
             'success' => true,
@@ -39,30 +55,37 @@ class InventoryController extends Controller
                 'quantity' => 'required|integer|min:1',
             ]);
 
+            $user = auth()->user();
+            $branchId = $user->branch_id;
+            
             $product = Product::findOrFail($id);
             $quantity = $request->quantity;
+            
+            // Get or create branch-specific stock
+            $branchStock = BranchStock::getOrCreate($branchId, $id);
 
             // Check if we have enough stock
-            if ($product->stock_quantity < $quantity) {
+            if ($branchStock->stock_quantity < $quantity) {
                 return response()->json([
                     'success' => false,
-                    'message' => "Not enough stock. Only {$product->stock_quantity} units available.",
+                    'message' => "Not enough stock. Only {$branchStock->stock_quantity} units available.",
                 ], 400);
             }
 
             // Reduce stock
-            $product->stock_quantity -= $quantity;
+            $branchStock->stock_quantity -= $quantity;
             
             // Auto-set unavailable if stock reaches 0
-            if ($product->stock_quantity <= 0) {
-                $product->is_available = false;
+            if ($branchStock->stock_quantity <= 0) {
+                $branchStock->is_available = false;
             }
             
-            $product->save();
+            $branchStock->save();
 
             // Log the stock reduction
             \App\Models\StockLog::create([
                 'product_id' => $product->id,
+                'branch_id' => $branchId,
                 'user_id' => auth()->id(),
                 'quantity' => $quantity,
                 'type' => 'remove',
@@ -71,9 +94,9 @@ class InventoryController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => "{$quantity} unit(s) marked as sold. Stock remaining: {$product->stock_quantity}",
-                'new_quantity' => $product->stock_quantity,
-                'is_available' => $product->is_available,
+                'message' => "{$quantity} unit(s) marked as sold. Stock remaining: {$branchStock->stock_quantity}",
+                'new_quantity' => $branchStock->stock_quantity,
+                'is_available' => $branchStock->is_available,
             ]);
         } catch (\Exception $e) {
             return response()->json([

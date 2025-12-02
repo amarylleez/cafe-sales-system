@@ -788,4 +788,109 @@ class StaffController extends Controller
             'message' => 'Schedule confirmed successfully.'
         ]);
     }
+
+    /**
+     * Clock in for a shift
+     */
+    public function clockIn($id)
+    {
+        $user = auth()->user();
+
+        $schedule = StaffSchedule::where('id', $id)
+            ->where('staff_id', $user->id)
+            ->where('status', 'confirmed')
+            ->whereNull('clock_in_time')
+            ->firstOrFail();
+
+        // Check if it's the right day
+        if (!$schedule->schedule_date->isToday()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You can only clock in on the scheduled day.'
+            ], 422);
+        }
+
+        $now = now();
+        $shiftDate = $schedule->schedule_date->format('Y-m-d');
+        $shiftStart = Carbon::parse($shiftDate . ' ' . $schedule->shift_times['start']);
+        
+        // Check if within clock-in window (2 hours before to 2 hours after shift start)
+        $windowStart = $shiftStart->copy()->subHours(2);
+        $windowEnd = $shiftStart->copy()->addHours(2);
+
+        if (!$now->between($windowStart, $windowEnd)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Clock in is available from ' . $windowStart->format('h:i A') . ' to ' . $windowEnd->format('h:i A') . '. Current time: ' . $now->format('h:i A')
+            ], 422);
+        }
+
+        // Check if late (more than 5 minutes after shift start)
+        $isLate = $now->gt($shiftStart->copy()->addMinutes(5));
+
+        $schedule->update([
+            'status' => 'clocked_in',
+            'clock_in_time' => $now,
+            'is_late' => $isLate,
+        ]);
+
+        $message = 'Clocked in successfully at ' . $now->format('h:i A');
+        if ($isLate) {
+            $message .= ' (Late arrival)';
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'clock_in_time' => $now->format('h:i A'),
+            'is_late' => $isLate
+        ]);
+    }
+
+    /**
+     * Clock out from a shift
+     */
+    public function clockOut($id)
+    {
+        $user = auth()->user();
+
+        $schedule = StaffSchedule::where('id', $id)
+            ->where('staff_id', $user->id)
+            ->where('status', 'clocked_in')
+            ->whereNotNull('clock_in_time')
+            ->whereNull('clock_out_time')
+            ->firstOrFail();
+
+        $now = now();
+        $clockInTime = Carbon::parse($schedule->clock_in_time);
+        
+        // Calculate hours worked
+        $hoursWorked = round($clockInTime->diffInMinutes($now) / 60, 2);
+
+        // Check if early leave (more than 30 mins before scheduled end)
+        $shiftTimes = $schedule->shift_times;
+        $shiftDate = $schedule->schedule_date->format('Y-m-d');
+        $shiftEnd = Carbon::parse($shiftDate . ' ' . $shiftTimes['end']);
+        $isEarlyLeave = $now->lt($shiftEnd->copy()->subMinutes(30));
+
+        $schedule->update([
+            'status' => 'completed',
+            'clock_out_time' => $now,
+            'hours_worked' => $hoursWorked,
+            'is_early_leave' => $isEarlyLeave,
+        ]);
+
+        $message = 'Clocked out successfully. You worked ' . $hoursWorked . ' hours.';
+        if ($isEarlyLeave) {
+            $message .= ' (Early leave recorded)';
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'clock_out_time' => $now->format('h:i A'),
+            'hours_worked' => $hoursWorked,
+            'is_early_leave' => $isEarlyLeave
+        ]);
+    }
 }

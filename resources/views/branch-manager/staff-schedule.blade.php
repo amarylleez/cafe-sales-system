@@ -128,6 +128,7 @@
                     <div class="d-flex flex-wrap gap-3">
                         <span><span class="badge bg-info">Scheduled</span> - Pending confirmation</span>
                         <span><span class="badge bg-primary">Confirmed</span> - Staff confirmed</span>
+                        <span><span class="badge bg-warning text-dark">Clocked In</span> - Currently working</span>
                         <span><span class="badge bg-success">Completed</span> - Shift completed</span>
                         <span><span class="badge bg-danger">Absent</span> - Did not show</span>
                         <span><span class="badge bg-secondary">Cancelled</span> - Cancelled</span>
@@ -277,10 +278,11 @@ document.getElementById('addScheduleForm').addEventListener('submit', function(e
 function viewScheduleDetails(scheduleId, schedule) {
     currentScheduleId = scheduleId;
     
-    const statusOptions = ['scheduled', 'confirmed', 'completed', 'absent', 'cancelled'];
+    const statusOptions = ['scheduled', 'confirmed', 'clocked_in', 'completed', 'absent', 'cancelled'];
     const statusLabels = {
         'scheduled': 'Scheduled',
         'confirmed': 'Confirmed',
+        'clocked_in': 'Clocked In',
         'completed': 'Completed',
         'absent': 'Absent',
         'cancelled': 'Cancelled'
@@ -296,6 +298,23 @@ function viewScheduleDetails(scheduleId, schedule) {
         'evening': '6:00 PM - 12:00 AM',
         'full_day': '9:00 AM - 6:00 PM'
     };
+
+    // Format clock times
+    let clockInfo = '';
+    if (schedule.clock_in_time) {
+        const clockIn = new Date(schedule.clock_in_time);
+        clockInfo += `<div class="mb-2"><i class="bi bi-box-arrow-in-right text-success"></i> <strong>Clocked In:</strong> ${clockIn.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>`;
+    }
+    if (schedule.clock_out_time) {
+        const clockOut = new Date(schedule.clock_out_time);
+        clockInfo += `<div class="mb-2"><i class="bi bi-box-arrow-right text-danger"></i> <strong>Clocked Out:</strong> ${clockOut.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>`;
+    }
+    if (schedule.hours_worked) {
+        clockInfo += `<div class="mb-2"><i class="bi bi-hourglass-split text-info"></i> <strong>Hours Worked:</strong> ${schedule.hours_worked} hrs</div>`;
+    }
+    if (schedule.is_late) {
+        clockInfo += `<div class="mb-2"><span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle"></i> Late Arrival</span></div>`;
+    }
     
     document.getElementById('scheduleDetailsContent').innerHTML = `
         <div class="mb-3">
@@ -311,6 +330,7 @@ function viewScheduleDetails(scheduleId, schedule) {
             <p class="fw-bold">${schedule.shift_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
             <small class="text-muted"><i class="bi bi-clock"></i> ${shiftTimes[schedule.shift_type] || 'N/A'}</small>
         </div>
+        ${clockInfo ? `<div class="mb-3 p-3 bg-light rounded"><label class="form-label text-muted">Attendance</label>${clockInfo}</div>` : ''}
         <div class="mb-3">
             <label class="form-label">Update Status</label>
             <select class="form-select" id="scheduleStatusSelect" onchange="updateScheduleStatus(${scheduleId}, this.value)">

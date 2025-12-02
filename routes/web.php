@@ -85,8 +85,10 @@ Route::middleware(['auth'])->prefix('branch-manager')->name('branch-manager.')->
     Route::get('/staff/{staffId}/performance', [BranchManagerController::class, 'getStaffPerformance'])->name('staff.performance');
     Route::get('/staff/{staffId}/schedule', [BranchManagerController::class, 'getStaffSchedule'])->name('staff.schedule');
     
-    // Staff Schedule
-    Route::get('/staff-schedule', [BranchManagerController::class, 'staffSchedule'])->name('staff-schedule');
+    // Staff Schedule (redirect to team-overview, but keep API routes)
+    Route::get('/staff-schedule', function () {
+        return redirect()->route('branch-manager.team-overview');
+    })->name('staff-schedule');
     Route::post('/staff-schedule', [BranchManagerController::class, 'storeSchedule'])->name('staff-schedule.store');
     Route::patch('/staff-schedule/{id}/status', [BranchManagerController::class, 'updateScheduleStatus'])->name('staff-schedule.status');
     Route::delete('/staff-schedule/{id}', [BranchManagerController::class, 'deleteSchedule'])->name('staff-schedule.delete');
@@ -120,6 +122,8 @@ Route::middleware(['auth'])->prefix('staff')->name('staff.')->group(function () 
     // My Schedule Routes
     Route::get('/my-schedule', [StaffController::class, 'mySchedule'])->name('my-schedule');
     Route::post('/schedule/{id}/confirm', [StaffController::class, 'confirmSchedule'])->name('schedule.confirm');
+    Route::post('/schedule/{id}/clock-in', [StaffController::class, 'clockIn'])->name('schedule.clock-in');
+    Route::post('/schedule/{id}/clock-out', [StaffController::class, 'clockOut'])->name('schedule.clock-out');
     
     // Dashboard Sub-pages
     Route::get('/dashboard/target', [StaffController::class, 'targetOverview'])->name('dashboard.target');
