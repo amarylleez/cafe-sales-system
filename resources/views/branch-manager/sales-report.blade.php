@@ -536,7 +536,7 @@ function exportReport() {
 
 // Finalize and submit to HQ
 function finalizeAndSubmit() {
-    if (confirm('Are you sure you want to finalize and submit all approved reports to HQ? This action cannot be undone.')) {
+    if (confirm('Are you sure you want to finalize and submit all pending reports to HQ? This will approve all pending transactions.')) {
         fetch('/branch-manager/sales-report/finalize', {
             method: 'POST',
             headers: {
@@ -547,9 +547,15 @@ function finalizeAndSubmit() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Reports finalized and submitted to HQ!');
+                alert(data.message);
                 location.reload();
+            } else {
+                alert(data.message || 'No pending reports to finalize.');
             }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while processing your request.');
         });
     }
 }

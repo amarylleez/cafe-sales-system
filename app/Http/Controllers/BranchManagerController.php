@@ -515,6 +515,43 @@ class BranchManagerController extends Controller
     }
 
     /**
+     * Finalize and submit all pending reports to HQ - approves all pending transactions
+     */
+    public function finalizeAndSubmit()
+    {
+        $user = auth()->user();
+        $branchId = $user->branch_id;
+
+        // Get all pending (unverified) sales for this branch
+        $pendingSales = DailySale::where('branch_id', $branchId)
+            ->whereNull('verified_by')
+            ->get();
+
+        $count = $pendingSales->count();
+
+        if ($count === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No pending reports to finalize.'
+            ]);
+        }
+
+        // Approve all pending sales
+        foreach ($pendingSales as $sale) {
+            $sale->verified_by = auth()->id();
+            $sale->verified_at = now();
+            $sale->status = 'completed';
+            $sale->completed_at = now();
+            $sale->save();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $count . ' report(s) finalized and submitted to HQ successfully.'
+        ]);
+    }
+
+    /**
      * Verify report - approves the transaction and changes status to completed
      */
     public function verifyReport($id)

@@ -72,6 +72,7 @@ Route::middleware(['auth'])->prefix('branch-manager')->name('branch-manager.')->
     // Sales Report
     Route::get('/sales-report', [BranchManagerController::class, 'salesReport'])->name('sales-report');
     Route::get('/sales-report/export', [BranchManagerController::class, 'exportSalesReport'])->name('sales-report.export');
+    Route::post('/sales-report/finalize', [BranchManagerController::class, 'finalizeAndSubmit'])->name('sales-report.finalize');
     Route::get('/sales-report/{id}', [BranchManagerController::class, 'getReportDetails'])->name('sales-report.details');
     Route::post('/sales-report/{id}/verify', [BranchManagerController::class, 'verifyReport'])->name('sales-report.verify');
     Route::post('/sales-report/{id}/edit', [BranchManagerController::class, 'updateReport'])->name('sales-report.edit');
