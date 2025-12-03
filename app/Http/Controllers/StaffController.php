@@ -28,14 +28,6 @@ class StaffController extends Controller
         $branchId = $user->branch_id;
         $currentMonth = Carbon::now();
 
-        // Get active KPIs for current month
-        $kpis = KPI::where('branch_id', $branchId)
-            ->where('status', 'active')
-            ->whereMonth('target_month', $currentMonth->month)
-            ->whereYear('target_month', $currentMonth->year)
-            ->with('progress')
-            ->get();
-
         // Get unread notifications count
         $unreadNotifications = Notification::where('user_id', $user->id)
             ->where('is_read', false)
@@ -105,13 +97,9 @@ class StaffController extends Controller
             ->orderByDesc('total_quantity')
             ->get();
 
-        // Get KPI progress data for charts
-        $kpiProgressData = $this->getKPIProgressData($branchId, $currentMonth);
-
         return view('dashboards.staff', compact(
             'user',
             'branch',
-            'kpis',
             'unreadNotifications',
             'todaySales',
             'todayTransactions',
@@ -120,8 +108,7 @@ class StaffController extends Controller
             'monthlyTransactions',
             'yesterdaySales',
             'lastMonthSales',
-            'categorySales',
-            'kpiProgressData'
+            'categorySales'
         ));
     }
 
@@ -500,7 +487,7 @@ class StaffController extends Controller
 
         // Get regular notifications
         $notifications = Notification::where('user_id', $user->id)
-            ->whereIn('type', ['kpi_target_not_met', 'low_stock_alert'])
+            ->whereIn('type', ['kpi_target_not_met', 'low_stock_alert', 'system_announcement', 'important_notice'])
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -531,11 +518,24 @@ class StaffController extends Controller
     {
         $user = auth()->user();
         $branchId = $user->branch_id;
+        $selectedCategory = request()->get('category');
+        $search = request()->get('search');
         
         // Get products with branch-specific stock
-        $products = Product::with('category')
-            ->orderBy('name')
-            ->get()
+        $productsQuery = Product::with('category')
+            ->orderBy('name');
+        
+        // Filter by category if selected
+        if ($selectedCategory) {
+            $productsQuery->where('category_id', $selectedCategory);
+        }
+        
+        // Filter by search term
+        if ($search) {
+            $productsQuery->where('name', 'ilike', '%' . $search . '%');
+        }
+        
+        $products = $productsQuery->get()
             ->map(function ($product) use ($branchId) {
                 $branchStock = BranchStock::where('branch_id', $branchId)
                     ->where('product_id', $product->id)
@@ -556,12 +556,14 @@ class StaffController extends Controller
             $products->count(),
             $perPage,
             $page,
-            ['path' => request()->url()]
+            ['path' => request()->url(), 'query' => request()->query()]
         );
 
-        $categories = Category::all();
+        $categories = Category::orderByRaw("CASE WHEN name = 'Lain-lain' THEN 1 ELSE 0 END")
+            ->orderBy('name')
+            ->get();
 
-        return view('staff.inventory', compact('products', 'categories'));
+        return view('staff.inventory', compact('products', 'categories', 'selectedCategory'));
     }
 
     /**

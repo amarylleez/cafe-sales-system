@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\DailySale;
 use App\Models\KPI;
 use App\Models\Benchmark;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -623,7 +624,6 @@ class HQAdminController extends Controller
         $benchmarks = Benchmark::where('is_active', true)->first();
         
         $monthlyBenchmark = $benchmarks->monthly_sales_target ?? 50000;
-        $transactionBenchmark = $benchmarks->transaction_target ?? 100;
         $staffBenchmark = $benchmarks->staff_sales_target ?? 10000;
 
         // Get branch KPIs
@@ -671,7 +671,6 @@ class HQAdminController extends Controller
 
         return view('hq-admin.kpi-benchmark', compact(
             'monthlyBenchmark',
-            'transactionBenchmark',
             'staffBenchmark',
             'branchKPIs',
             'staffPerformance',
@@ -695,7 +694,7 @@ class HQAdminController extends Controller
         // Create new benchmark - applied immediately
         Benchmark::create([
             'monthly_sales_target' => $request->monthly_benchmark,
-            'transaction_target' => 0, // No longer used
+            'transaction_target' => 0, // Deprecated field, kept for backwards compatibility
             'staff_sales_target' => $request->staff_benchmark,
             'is_active' => true,
             'effective_from' => Carbon::now()
@@ -928,5 +927,277 @@ class HQAdminController extends Controller
         ]);
 
         return redirect()->route('hq-admin.settings')->with('status', 'password-updated');
+    }
+
+    // ========== NOTIFICATION METHODS ==========
+
+    /**
+     * Show notifications center
+     */
+    public function notifications()
+    {
+        $currentMonth = Carbon::now();
+        $branches = Branch::all();
+        $activeBranches = Branch::where('is_active', true)->count();
+
+        // Get broadcasts sent by HQ (system_announcement sent by current user)
+        // Show master records OR broadcasts sent by this HQ admin (for backwards compatibility)
+        // Eager load sender and branch to prevent N+1 queries
+        $broadcasts = Notification::where('type', 'system_announcement')
+            ->where('sender_id', auth()->id())
+            ->where(function($query) {
+                $query->whereJsonContains('data->is_master_record', true)
+                      ->orWhereJsonContains('data->is_hq_broadcast', true);
+            })
+            ->with(['sender:id,name', 'branch:id,name'])
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->unique(function ($item) {
+                // Group by title + message + approximate time to avoid duplicates
+                return $item->title . '|' . $item->message . '|' . $item->created_at->format('Y-m-d H:i');
+            })
+            ->values();
+        
+        // Paginate manually after deduplication
+        $page = request()->get('page', 1);
+        $perPage = 10;
+        $broadcastsPaginated = new \Illuminate\Pagination\LengthAwarePaginator(
+            $broadcasts->forPage($page, $perPage),
+            $broadcasts->count(),
+            $perPage,
+            $page,
+            ['path' => request()->url()]
+        );
+
+        // Stats
+        $totalBroadcasts = $broadcasts->count();
+        $thisMonthBroadcasts = $broadcasts->filter(function($item) use ($currentMonth) {
+            return $item->created_at->month === $currentMonth->month 
+                && $item->created_at->year === $currentMonth->year;
+        })->count();
+
+        // Generate system alerts
+        $systemAlerts = $this->generateSystemAlerts($currentMonth);
+        
+        // Rename for view compatibility
+        $broadcasts = $broadcastsPaginated;
+
+        return view('hq-admin.notifications', compact(
+            'branches',
+            'activeBranches',
+            'broadcasts',
+            'systemAlerts',
+            'totalBroadcasts',
+            'thisMonthBroadcasts'
+        ));
+    }
+
+    /**
+     * Generate system alerts based on branch performance
+     */
+    private function generateSystemAlerts($currentMonth)
+    {
+        $alerts = collect();
+        $benchmark = Benchmark::where('is_active', true)->first();
+        $monthlyTarget = $benchmark->monthly_sales_target ?? 50000;
+
+        // Check each branch's performance
+        $branches = Branch::all();
+        foreach ($branches as $branch) {
+            $sales = DailySale::where('branch_id', $branch->id)
+                ->whereMonth('sale_date', $currentMonth->month)
+                ->whereYear('sale_date', $currentMonth->year)
+                ->where('status', 'completed')
+                ->sum('total_amount');
+
+            $progress = $monthlyTarget > 0 ? ($sales / $monthlyTarget) * 100 : 0;
+            $daysInMonth = $currentMonth->daysInMonth;
+            $dayOfMonth = $currentMonth->day;
+            $expectedProgress = ($dayOfMonth / $daysInMonth) * 100;
+
+            // Alert if branch is significantly behind
+            if ($progress < ($expectedProgress - 20) && $dayOfMonth >= 7) {
+                $alerts->push([
+                    'type' => 'warning',
+                    'icon' => 'graph-down-arrow',
+                    'title' => $branch->name . ' - Below Target',
+                    'message' => "Currently at " . number_format($progress, 1) . "% of monthly target. Expected: " . number_format($expectedProgress, 1) . "%",
+                    'time' => 'Updated just now',
+                    'action_url' => route('hq-admin.analytics.branch', $branch->id)
+                ]);
+            }
+
+            // Check for no sales today
+            $todaySales = DailySale::where('branch_id', $branch->id)
+                ->whereDate('sale_date', Carbon::today())
+                ->where('status', 'completed')
+                ->count();
+
+            if ($todaySales === 0 && Carbon::now()->hour >= 12) {
+                $alerts->push([
+                    'type' => 'info',
+                    'icon' => 'exclamation-circle',
+                    'title' => $branch->name . ' - No Sales Today',
+                    'message' => 'No completed sales recorded for today yet.',
+                    'time' => Carbon::now()->format('g:i A'),
+                    'action_url' => route('hq-admin.analytics.branch', $branch->id)
+                ]);
+            }
+        }
+
+        // Check for low-performing staff
+        $staffBenchmark = $benchmark->staff_sales_target ?? 10000;
+        $lowPerformingStaff = User::where('role', 'staff')
+            ->with('branch')
+            ->get()
+            ->filter(function($staff) use ($currentMonth, $staffBenchmark) {
+                $sales = DailySale::where('staff_id', $staff->id)
+                    ->whereMonth('sale_date', $currentMonth->month)
+                    ->whereYear('sale_date', $currentMonth->year)
+                    ->where('status', 'completed')
+                    ->sum('total_amount');
+                
+                $progress = $staffBenchmark > 0 ? ($sales / $staffBenchmark) * 100 : 0;
+                return $progress < 30 && $currentMonth->day >= 15; // Alert after mid-month
+            });
+
+        if ($lowPerformingStaff->count() > 0) {
+            $alerts->push([
+                'type' => 'warning',
+                'icon' => 'people-fill',
+                'title' => $lowPerformingStaff->count() . ' Staff Below 30% Target',
+                'message' => 'Some staff members are significantly behind their monthly sales target.',
+                'time' => 'Mid-month review',
+                'action_url' => route('hq-admin.kpi-benchmark')
+            ]);
+        }
+
+        return $alerts->take(10); // Limit to 10 alerts
+    }
+
+    /**
+     * Send broadcast notification
+     */
+    public function sendBroadcast(Request $request)
+    {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'message' => 'required|string',
+            'priority' => 'required|in:medium,high,urgent',
+            'target' => 'required|in:all,managers,staff,branch',
+            'branch_id' => 'required_if:target,branch|nullable|exists:branches,id',
+            'action_url' => 'nullable|url'
+        ]);
+
+        $sender = auth()->user();
+        $recipients = collect();
+
+        // Determine recipients based on target
+        switch ($request->target) {
+            case 'all':
+                $recipients = User::whereNotNull('branch_id')->get();
+                break;
+            case 'managers':
+                $recipients = User::where('role', 'branch_manager')->get();
+                break;
+            case 'staff':
+                $recipients = User::where('role', 'staff')->get();
+                break;
+            case 'branch':
+                $recipients = User::where('branch_id', $request->branch_id)->get();
+                break;
+        }
+
+        // Get first branch for master record (use first recipient's branch or first branch in system)
+        $firstBranch = Branch::first();
+
+        // Create notification for each recipient
+        foreach ($recipients as $recipient) {
+            Notification::create([
+                'branch_id' => $recipient->branch_id,
+                'user_id' => $recipient->id,
+                'sender_id' => $sender->id,
+                'type' => 'system_announcement',
+                'title' => $request->title,
+                'message' => $request->message,
+                'priority' => $request->priority,
+                'action_url' => $request->action_url,
+                'data' => [
+                    'target' => $request->target,
+                    'target_branch_id' => $request->branch_id,
+                    'is_hq_broadcast' => true
+                ]
+            ]);
+        }
+
+        // Also create a master record for HQ's broadcast history
+        // Use first branch's ID since branch_id is required
+        Notification::create([
+            'branch_id' => $firstBranch->id,
+            'user_id' => $sender->id,
+            'sender_id' => $sender->id,
+            'type' => 'system_announcement',
+            'title' => $request->title,
+            'message' => $request->message,
+            'priority' => $request->priority,
+            'action_url' => $request->action_url,
+            'data' => [
+                'target' => $request->target,
+                'target_branch_id' => $request->branch_id,
+                'recipients_count' => $recipients->count(),
+                'is_master_record' => true,
+                'is_hq_broadcast' => true
+            ]
+        ]);
+
+        return redirect()->route('hq-admin.notifications')
+            ->with('success', 'Broadcast sent successfully to ' . $recipients->count() . ' recipients!');
+    }
+
+    /**
+     * Get broadcast details
+     */
+    public function getBroadcast($id)
+    {
+        $broadcast = Notification::with(['sender', 'branch'])->findOrFail($id);
+        
+        return response()->json([
+            'success' => true,
+            'broadcast' => $broadcast
+        ]);
+    }
+
+    /**
+     * Delete broadcast
+     */
+    public function deleteBroadcast($id)
+    {
+        $broadcast = Notification::findOrFail($id);
+        
+        // Only allow deletion of broadcasts sent by current user
+        if ($broadcast->sender_id !== auth()->id()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You can only delete your own broadcasts'
+            ], 403);
+        }
+
+        // Delete all related notifications (both master record and recipient copies)
+        // Match by sender, type, title, message, and approximate creation time (within 1 minute)
+        $deletedCount = Notification::where('sender_id', $broadcast->sender_id)
+            ->where('type', 'system_announcement')
+            ->where('title', $broadcast->title)
+            ->where('message', $broadcast->message)
+            ->whereBetween('created_at', [
+                $broadcast->created_at->subMinute(),
+                $broadcast->created_at->addMinute()
+            ])
+            ->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Broadcast deleted successfully for all recipients',
+            'deleted_count' => $deletedCount
+        ]);
     }
 }

@@ -55,6 +55,14 @@ class Notification extends Model
     }
 
     /**
+     * Get the target branch ID from data (for broadcasts)
+     */
+    public function getTargetBranchIdAttribute()
+    {
+        return $this->data['target_branch_id'] ?? null;
+    }
+
+    /**
      * Mark notification as read
      */
     public function markAsRead()

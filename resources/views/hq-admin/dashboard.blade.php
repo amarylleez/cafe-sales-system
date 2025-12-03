@@ -298,11 +298,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     'rgba(246, 236, 227, 0.8)'
                 ],
                 borderColor: [
-                    '#423A8E',
-                    '#00CCCD',
-                    '#423A8E'
+                    'rgba(66, 58, 142, 1)',
+                    'rgba(2, 183, 183, 1)',
+                    'rgba(220, 200, 180, 1)'
                 ],
-                borderWidth: 2,
+                borderWidth: [2, 2, 2],
                 borderRadius: 5
             }]
         },

@@ -62,6 +62,12 @@ Route::middleware(['auth'])->prefix('hq-admin')->name('hq-admin.')->group(functi
     Route::get('/settings', [HQAdminController::class, 'settings'])->name('settings');
     Route::patch('/settings/profile', [HQAdminController::class, 'updateProfile'])->name('settings.profile');
     Route::put('/settings/password', [HQAdminController::class, 'updatePassword'])->name('settings.password');
+
+    // Notifications
+    Route::get('/notifications', [HQAdminController::class, 'notifications'])->name('notifications');
+    Route::post('/notifications/broadcast', [HQAdminController::class, 'sendBroadcast'])->name('notifications.broadcast');
+    Route::get('/notifications/{id}', [HQAdminController::class, 'getBroadcast'])->name('notifications.get');
+    Route::delete('/notifications/{id}', [HQAdminController::class, 'deleteBroadcast'])->name('notifications.delete');
 });
    
 // Branch Manager Routes

@@ -1,6 +1,6 @@
 @extends('layouts.hq-admin')
 
-@section('page-title', 'KPI & Benchmark')
+@section('page-title', 'Benchmark')
 
 @section('content')
 <div class="container-fluid">
@@ -11,7 +11,7 @@
                 <div class="card-header" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                     <div class="d-flex justify-content-between align-items-center">
                         <h5 class="mb-0 text-white">
-                            <i class="bi bi-graph-up"></i> KPI & Benchmark Management
+                            <i class="bi bi-graph-up"></i> Benchmark Management
                         </h5>
                         <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#setBenchmarkModal">
                             <i class="bi bi-plus-circle"></i> Set New Benchmark
@@ -19,7 +19,7 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <p class="text-muted mb-0">Set sales performance benchmarks and monitor KPI achievements across all branches.</p>
+                    <p class="text-muted mb-0">Set sales performance benchmarks and monitor achievements across all branches.</p>
                 </div>
             </div>
         </div>
@@ -71,7 +71,7 @@
         <div class="col-12">
             <div class="card shadow-sm">
                 <div class="card-header bg-white">
-                    <h5 class="mb-0"><i class="bi bi-trophy"></i> Branch KPI Achievement</h5>
+                    <h5 class="mb-0"><i class="bi bi-trophy"></i> Branch Benchmark Achievement</h5>
                 </div>
                 <div class="card-body">
                     <div class="row g-4">
@@ -146,7 +146,7 @@
         <div class="col-12">
             <div class="card shadow-sm">
                 <div class="card-header bg-white">
-                    <h5 class="mb-0"><i class="bi bi-people"></i> Staff KPI Achievement Comparison</h5>
+                    <h5 class="mb-0"><i class="bi bi-people"></i> Staff Benchmark Achievement Comparison</h5>
                 </div>
                 <div class="card-body">
                     <canvas id="staffKPIChart" height="80"></canvas>

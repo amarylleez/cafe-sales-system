@@ -1,6 +1,6 @@
 @extends('layouts.branch-manager')
 
-@section('page-title', 'KPI & Benchmark')
+@section('page-title', 'Benchmark')
 
 @section('content')
 <div class="container-fluid">
@@ -10,11 +10,11 @@
             <div class="card shadow-sm">
                 <div class="card-header" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                     <h5 class="mb-0 text-white">
-                        <i class="bi bi-graph-up"></i> KPI & Benchmark Tracking
+                        <i class="bi bi-graph-up"></i> Benchmark Tracking
                     </h5>
                 </div>
                 <div class="card-body">
-                    <p class="text-muted mb-0">Monitor branch KPIs and track staff performance against targets.</p>
+                    <p class="text-muted mb-0">Monitor branch benchmarks and track staff performance against targets.</p>
                 </div>
             </div>
         </div>
@@ -67,74 +67,80 @@
             </div>
         </div>
 
-        <!-- Transaction Target Card -->
+        <!-- Average Transaction Value Card -->
         <div class="col-md-4">
             <div class="card shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                 <div class="card-body text-white">
+                    @php
+                        $avgTransactionValue = $branchTransactionCount > 0 
+                            ? $branchMonthlySales / $branchTransactionCount 
+                            : 0;
+                    @endphp
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <h6 class="opacity-75 mb-2">Transaction Target</h6>
-                            <h2 class="mb-1">{{ number_format($benchmark->transaction_target) }}</h2>
-                            <p class="mb-0 opacity-75">Monthly Transactions</p>
+                            <h6 class="opacity-75 mb-2">Average Transaction</h6>
+                            <h2 class="mb-1">RM {{ number_format($avgTransactionValue, 2) }}</h2>
+                            <p class="mb-0 opacity-75">Per Transaction</p>
                         </div>
                         <div class="opacity-50">
-                            <i class="bi bi-receipt" style="font-size: 2.5rem;"></i>
+                            <i class="bi bi-cash-stack" style="font-size: 2.5rem;"></i>
                         </div>
                     </div>
                     
-                    @php
-                        $branchTxnPercentage = $benchmark->transaction_target > 0 
-                            ? min(($branchTransactionCount / $benchmark->transaction_target) * 100, 100) 
-                            : 0;
-                    @endphp
-                    
                     <div class="mt-3">
                         <div class="d-flex justify-content-between mb-1">
-                            <span>Progress</span>
-                            <span>{{ number_format($branchTxnPercentage, 1) }}%</span>
+                            <span>This Month</span>
+                            <span>{{ number_format($branchTransactionCount) }} sales</span>
                         </div>
                         <div class="progress" style="height: 8px; background: rgba(255,255,255,0.3);">
-                            <div class="progress-bar bg-white" style="width: {{ $branchTxnPercentage }}%;"></div>
+                            <div class="progress-bar bg-white" style="width: 100%;"></div>
                         </div>
                         <div class="d-flex justify-content-between mt-2">
-                            <small>{{ number_format($branchTransactionCount) }} completed</small>
-                            <small>{{ number_format($benchmark->transaction_target) }} target</small>
+                            <small>Total: RM {{ number_format($branchMonthlySales, 2) }}</small>
+                            <small>{{ number_format($branchTransactionCount) }} transactions</small>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Staff Target Card -->
+        <!-- Month-over-Month Growth Card -->
         <div class="col-md-4">
             <div class="card shadow-sm border-0 h-100" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                 <div class="card-body text-white">
+                    @php
+                        $lastMonthSales = $monthlySalesData['values'][count($monthlySalesData['values']) - 2] ?? 0;
+                        $currentMonthSales = $branchMonthlySales;
+                        $growthPercentage = $lastMonthSales > 0 
+                            ? (($currentMonthSales - $lastMonthSales) / $lastMonthSales) * 100 
+                            : 0;
+                        $isPositiveGrowth = $growthPercentage >= 0;
+                    @endphp
                     <div class="d-flex justify-content-between align-items-start">
                         <div>
-                            <h6 class="opacity-75 mb-2">Staff Sales Target</h6>
-                            <h2 class="mb-1">RM {{ number_format($benchmark->staff_sales_target, 2) }}</h2>
-                            <p class="mb-0 opacity-75">Per Staff Monthly</p>
+                            <h6 class="opacity-75 mb-2">Month-over-Month</h6>
+                            <h2 class="mb-1">
+                                <i class="bi bi-{{ $isPositiveGrowth ? 'arrow-up' : 'arrow-down' }}"></i>
+                                {{ $isPositiveGrowth ? '+' : '' }}{{ number_format($growthPercentage, 1) }}%
+                            </h2>
+                            <p class="mb-0 opacity-75">Sales Growth</p>
                         </div>
                         <div class="opacity-50">
-                            <i class="bi bi-person-check" style="font-size: 2.5rem;"></i>
+                            <i class="bi bi-graph-up-arrow" style="font-size: 2.5rem;"></i>
                         </div>
                     </div>
                     
-                    @php
-                        $staffCount = $staffKpis->count();
-                        $staffMeetingTarget = $staffKpis->filter(fn($s) => $s['progress'] >= 100)->count();
-                    @endphp
-                    
                     <div class="mt-3">
                         <div class="d-flex justify-content-between mb-1">
-                            <span>Staff Meeting Target</span>
-                            <span>{{ $staffMeetingTarget }}/{{ $staffCount }}</span>
+                            <span>vs Last Month</span>
+                            <span>RM {{ number_format(abs($currentMonthSales - $lastMonthSales), 2) }}</span>
                         </div>
                         <div class="progress" style="height: 8px; background: rgba(255,255,255,0.3);">
-                            <div class="progress-bar bg-white" style="width: {{ $staffCount > 0 ? ($staffMeetingTarget / $staffCount) * 100 : 0 }}%;"></div>
+                            <div class="progress-bar {{ $isPositiveGrowth ? 'bg-white' : 'bg-warning' }}" style="width: {{ min(abs($growthPercentage), 100) }}%;"></div>
                         </div>
-                        <div class="mt-2">
-                            <small>{{ $staffMeetingTarget }} staff achieved target this month</small>
+                        <div class="d-flex justify-content-between mt-2">
+                            <small>Last: RM {{ number_format($lastMonthSales, 2) }}</small>
+                            <small>Now: RM {{ number_format($currentMonthSales, 2) }}</small>
                         </div>
                     </div>
                 </div>
@@ -165,81 +171,7 @@
         </div>
     </div>
 
-    <!-- Branch KPIs -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-white">
-                    <h5 class="mb-0"><i class="bi bi-bullseye"></i> Branch KPI Overview</h5>
-                </div>
-                <div class="card-body">
-                    @if($kpis->count() > 0)
-                        @foreach($kpis as $kpi)
-                        @php
-                            $currentProgress = 0;
-                            foreach($kpi->progress as $p) {
-                                $currentProgress += $p->daily_value;
-                            }
-                            $percentage = $kpi->target_value > 0 ? min(($currentProgress / $kpi->target_value) * 100, 100) : 0;
-                            $isAchieved = $currentProgress >= $kpi->target_value;
-                        @endphp
-                        <div class="mb-4">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <div>
-                                    <h6 class="mb-0">{{ $kpi->kpi_name }}</h6>
-                                    <small class="text-muted">{{ ucfirst(str_replace('_', ' ', $kpi->kpi_type)) }}</small>
-                                </div>
-                                <div class="text-end">
-                                    <span class="badge bg-{{ $kpi->priority === 'critical' ? 'danger' : ($kpi->priority === 'high' ? 'warning' : 'info') }}">
-                                        {{ ucfirst($kpi->priority) }}
-                                    </span>
-                                    @if($isAchieved)
-                                    <span class="badge bg-success ms-2">
-                                        <i class="bi bi-check-circle"></i> Achieved
-                                    </span>
-                                    @endif
-                                    <div class="mt-1">
-                                        <strong>{{ number_format($currentProgress, 2) }}</strong> / {{ number_format($kpi->target_value, 2) }}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="progress" style="height: 30px;">
-                                <div class="progress-bar bg-{{ $percentage >= 100 ? 'success' : ($percentage >= 75 ? 'info' : ($percentage >= 50 ? 'warning' : 'danger')) }}" 
-                                     style="width: {{ $percentage }}%;">
-                                    <strong>{{ number_format($percentage, 1) }}%</strong>
-                                </div>
-                            </div>
-                            @if($kpi->reward_amount || $kpi->penalty_amount)
-                            <div class="row mt-2">
-                                @if($kpi->reward_amount)
-                                <div class="col-md-6">
-                                    <small class="text-success">
-                                        <i class="bi bi-gift"></i> Reward: RM {{ number_format($kpi->reward_amount, 2) }}
-                                    </small>
-                                </div>
-                                @endif
-                                @if($kpi->penalty_amount)
-                                <div class="col-md-6">
-                                    <small class="text-danger">
-                                        <i class="bi bi-exclamation-triangle"></i> Penalty: RM {{ number_format($kpi->penalty_amount, 2) }}
-                                    </small>
-                                </div>
-                                @endif
-                            </div>
-                            @endif
-                        </div>
-                        @endforeach
-                    @else
-                    <div class="alert alert-info">
-                        <i class="bi bi-info-circle"></i> No additional branch-specific KPIs set for this month.
-                    </div>
-                    @endif
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Staff KPI Tracking -->
+    <!-- Staff Performance Tracking -->
     <div class="row">
         <div class="col-12">
             <div class="card shadow-sm">

@@ -13,6 +13,16 @@
     
     @stack('styles')
     
+    <!-- Apply saved sidebar state immediately to prevent flash -->
+    <script>
+        (function() {
+            var isCollapsed = localStorage.getItem('branchManagerSidebarCollapsed') === 'true';
+            if (isCollapsed) {
+                document.documentElement.classList.add('sidebar-collapsed');
+            }
+        })();
+    </script>
+    
     <style>
         :root {
             --sidebar-width: 250px;
@@ -41,6 +51,29 @@
             width: 100%;
             height: 100%;
             overflow-x: hidden;
+        }
+        
+        /* Instant sidebar collapse when saved in localStorage */
+        html.sidebar-collapsed .sidebar {
+            width: var(--sidebar-collapsed-width);
+        }
+        
+        html.sidebar-collapsed .sidebar-brand {
+            opacity: 0;
+            display: none;
+        }
+        
+        html.sidebar-collapsed .sidebar-menu-text {
+            opacity: 0;
+        }
+        
+        html.sidebar-collapsed .sidebar-header {
+            justify-content: center;
+        }
+        
+        html.sidebar-collapsed .main-content {
+            margin-left: var(--sidebar-collapsed-width);
+            width: calc(100% - var(--sidebar-collapsed-width));
         }
         
         /* Sidebar Styles */
@@ -301,7 +334,7 @@
             <li class="sidebar-menu-item">
                 <a href="{{ route('branch-manager.kpi-benchmark') }}" class="sidebar-menu-link {{ request()->routeIs('branch-manager.kpi-benchmark') ? 'active' : '' }}">
                     <i class="bi bi-graph-up sidebar-menu-icon"></i>
-                    <span class="sidebar-menu-text">KPI & Benchmark</span>
+                    <span class="sidebar-menu-text">Benchmark</span>
                 </a>
             </li>
             <li class="sidebar-menu-item">
@@ -471,7 +504,7 @@
             localStorage.setItem('branchManagerSidebarCollapsed', isCollapsed);
         });
         
-        // Restore sidebar state from localStorage
+        // Restore sidebar state from localStorage (sync with CSS applied in head)
         window.addEventListener('DOMContentLoaded', function() {
             const isCollapsed = localStorage.getItem('branchManagerSidebarCollapsed') === 'true';
             if (isCollapsed) {
@@ -479,6 +512,8 @@
                 mainContent.classList.add('expanded');
                 toggleIcon.className = 'bi bi-chevron-right';
             }
+            // Remove the html class as sidebar now has its own class
+            document.documentElement.classList.remove('sidebar-collapsed');
         });
         
         // Mobile menu toggle

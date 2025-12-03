@@ -2,6 +2,18 @@
 
 @section('page-title', 'Inventory Management')
 
+@push('styles')
+<style>
+    .category-scroll-container {
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE/Edge */
+    }
+    .category-scroll-container::-webkit-scrollbar {
+        display: none; /* Chrome/Safari */
+    }
+</style>
+@endpush
+
 @section('content')
 <div class="container-fluid">
     <div class="row mb-4">
@@ -12,12 +24,17 @@
                         <h5 class="mb-0">
                             <i class="bi bi-box-seam"></i> Update Sales Item Records
                         </h5>
-                        <div class="input-group" style="max-width: 400px;">
-                            <input type="text" class="form-control" id="searchInput" placeholder="Search products...">
-                            <button class="btn btn-light" type="button">
-                                <i class="bi bi-search"></i>
-                            </button>
-                        </div>
+                        <form action="{{ route('staff.inventory') }}" method="GET" style="max-width: 400px;">
+                            @if($selectedCategory)
+                            <input type="hidden" name="category" value="{{ $selectedCategory }}">
+                            @endif
+                            <div class="input-group">
+                                <input type="text" class="form-control" name="search" placeholder="Search products..." value="{{ request('search') }}">
+                                <button class="btn btn-light" type="submit">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
                 <div class="card-body">
@@ -28,15 +45,30 @@
     </div>
 
     <!-- Category Filter -->
-    <div class="row mb-3">
+    <div class="row mb-4">
         <div class="col-12">
-            <div class="btn-group" role="group">
-                <button type="button" class="btn btn-outline-primary active" data-category="all">All Categories</button>
-                @foreach($categories as $category)
-                <button type="button" class="btn btn-outline-primary" data-category="{{ $category->id }}">
-                    {{ $category->name }}
-                </button>
-                @endforeach
+            <div class="card shadow-sm">
+                <div class="card-body py-2">
+                    <div class="d-flex align-items-center">
+                        <span class="text-muted me-3 fw-semibold" style="white-space: nowrap;">
+                            <i class="bi bi-filter"></i> Filter:
+                        </span>
+                        <div class="category-scroll-container" style="overflow-x: auto; white-space: nowrap; -webkit-overflow-scrolling: touch;">
+                            <div class="d-inline-flex gap-2 pb-1">
+                                <a href="{{ route('staff.inventory', request('search') ? ['search' => request('search')] : []) }}" 
+                                   class="btn btn-sm {{ !isset($selectedCategory) || !$selectedCategory ? 'btn-primary' : 'btn-outline-secondary' }} rounded-pill px-3">
+                                    <i class="bi bi-grid-3x3-gap"></i> All
+                                </a>
+                                @foreach($categories as $category)
+                                <a href="{{ route('staff.inventory', array_merge(['category' => $category->id], request('search') ? ['search' => request('search')] : [])) }}" 
+                                   class="btn btn-sm {{ isset($selectedCategory) && $selectedCategory == $category->id ? 'btn-primary' : 'btn-outline-secondary' }} rounded-pill px-3">
+                                    {{ $category->name }}
+                                </a>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -134,37 +166,6 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const productDetailsModal = new bootstrap.Modal(document.getElementById('productDetailsModal'));
-
-    // Search functionality
-    const searchInput = document.getElementById('searchInput');
-    searchInput.addEventListener('input', function() {
-        const query = this.value.toLowerCase();
-        document.querySelectorAll('.product-item').forEach(item => {
-            const productName = item.querySelector('.card-title').textContent.toLowerCase();
-            if (productName.includes(query)) {
-                item.style.display = '';
-            } else {
-                item.style.display = 'none';
-            }
-        });
-    });
-
-    // Category filter
-    document.querySelectorAll('[data-category]').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('[data-category]').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            
-            const category = this.dataset.category;
-            document.querySelectorAll('.product-item').forEach(item => {
-                if (category === 'all' || item.dataset.category === category) {
-                    item.style.display = '';
-                } else {
-                    item.style.display = 'none';
-                }
-            });
-        });
-    });
 
     // Toggle availability
     document.querySelectorAll('.availability-toggle').forEach(toggle => {

@@ -1,6 +1,6 @@
 @extends('layouts.staff')
 
-@section('page-title', 'My KPI')
+@section('page-title', 'My Target')
 
 @section('content')
 <div class="container-fluid">
@@ -9,7 +9,7 @@
             <div class="card shadow-sm">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">
-                        <i class="bi bi-graph-up-arrow"></i> View Assigned KPIs & Progress
+                        <i class="bi bi-graph-up-arrow"></i> View Your Targets & Progress
                     </h5>
                 </div>
                 <div class="card-body">
@@ -172,11 +172,11 @@
     </div>
     @endif
 
-    <!-- Branch-Specific KPIs Section -->
+    <!-- Branch-Specific Targets Section -->
     @if($kpis->count() > 0)
     <div class="row mb-3">
         <div class="col-12">
-            <h5><i class="bi bi-list-check"></i> Branch-Specific KPIs</h5>
+            <h5><i class="bi bi-list-check"></i> Branch-Specific Targets</h5>
         </div>
     </div>
         @foreach($kpis as $kpi)
@@ -209,9 +209,9 @@
                             </div>
                         </div>
                     </div>
-                    <div class="card-body">
-                        <!-- KPI Overview -->
-                        <div class="row mb-4">
+                    <div class=\"card-body\">
+                        <!-- Target Overview -->
+                        <div class=\"row mb-4\">"
                             <div class="col-md-3">
                                 <div class="text-center p-3 bg-light rounded">
                                     <small class="text-muted">Target Value</small>

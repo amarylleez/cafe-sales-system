@@ -110,11 +110,19 @@
                                 <div class="d-flex align-items-center mb-2">
                                     @if($alert->type === 'kpi_target_not_met')
                                     <span class="badge bg-danger me-2">
-                                        <i class="bi bi-exclamation-triangle-fill"></i> KPI Alert
+                                        <i class="bi bi-exclamation-triangle-fill"></i> Target Alert
                                     </span>
                                     @elseif($alert->type === 'low_stock_alert')
                                     <span class="badge bg-warning me-2">
                                         <i class="bi bi-box-seam"></i> Stock Alert
+                                    </span>
+                                    @elseif($alert->type === 'system_announcement')
+                                    <span class="badge bg-primary me-2">
+                                        <i class="bi bi-megaphone-fill"></i> HQ Announcement
+                                    </span>
+                                    @elseif($alert->type === 'important_notice')
+                                    <span class="badge bg-info me-2">
+                                        <i class="bi bi-bell-fill"></i> Important Notice
                                     </span>
                                     @else
                                     <span class="badge bg-info me-2">
@@ -136,7 +144,7 @@
                                 <h5 class="card-title mb-2">{{ $alert->title }}</h5>
                                 <p class="card-text">{{ $alert->message }}</p>
 
-                                @if($alert->data)
+                                @if($alert->data && (isset($alert->data['target_value']) || isset($alert->data['current_value']) || isset($alert->data['loss']) || isset($alert->data['date'])))
                                 <div class="alert alert-light mt-3">
                                     <strong>Details:</strong>
                                     <ul class="mb-0 mt-2">

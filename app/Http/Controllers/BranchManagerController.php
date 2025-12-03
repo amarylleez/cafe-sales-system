@@ -450,40 +450,45 @@ class BranchManagerController extends Controller
     /**
      * Show inventory page for this branch
      */
-    public function inventory()
+    public function inventory(Request $request)
     {
         $user = auth()->user();
         $branchId = $user->branch_id;
         
-        // Get products with branch-specific stock
-        $products = Product::with('category')
-            ->orderBy('name')
-            ->get()
-            ->map(function ($product) use ($branchId) {
-                $branchStock = BranchStock::where('branch_id', $branchId)
-                    ->where('product_id', $product->id)
-                    ->first();
-                
-                $product->stock_quantity = $branchStock ? $branchStock->stock_quantity : 0;
-                $product->is_available = $branchStock ? $branchStock->is_available : true;
-                
-                return $product;
-            });
+        // Build query with optional category filter and search
+        $query = Product::with('category')->orderBy('name');
         
-        // Paginate manually
-        $page = request()->get('page', 1);
-        $perPage = 20;
-        $products = new \Illuminate\Pagination\LengthAwarePaginator(
-            $products->forPage($page, $perPage),
-            $products->count(),
-            $perPage,
-            $page,
-            ['path' => request()->url()]
-        );
+        $selectedCategory = $request->input('category');
+        if ($selectedCategory && $selectedCategory !== 'all') {
+            $query->where('category_id', $selectedCategory);
+        }
+        
+        // Add search filter
+        $search = $request->input('search');
+        if ($search) {
+            $query->where('name', 'ilike', '%' . $search . '%');
+        }
+        
+        // Get paginated products
+        $paginatedProducts = $query->paginate(20)->withQueryString();
+        
+        // Map branch-specific stock to each product
+        $paginatedProducts->getCollection()->transform(function ($product) use ($branchId) {
+            $branchStock = BranchStock::where('branch_id', $branchId)
+                ->where('product_id', $product->id)
+                ->first();
+            
+            $product->stock_quantity = $branchStock ? $branchStock->stock_quantity : 0;
+            $product->is_available = $branchStock ? $branchStock->is_available : true;
+            
+            return $product;
+        });
 
-        $categories = Category::all();
+        $categories = Category::orderByRaw("CASE WHEN name = 'Lain-lain' THEN 1 ELSE 0 END")
+            ->orderBy('name')
+            ->get();
 
-        return view('branch-manager.inventory', compact('products', 'categories'));
+        return view('branch-manager.inventory', compact('paginatedProducts', 'categories', 'selectedCategory'));
     }
 
     /**
@@ -738,7 +743,7 @@ class BranchManagerController extends Controller
 
         // Get regular notifications for this user
         $notifications = Notification::where('user_id', $user->id)
-            ->whereIn('type', ['kpi_target_not_met', 'low_stock_alert'])
+            ->whereIn('type', ['kpi_target_not_met', 'low_stock_alert', 'system_announcement', 'important_notice'])
             ->orderBy('created_at', 'desc')
             ->get();
 

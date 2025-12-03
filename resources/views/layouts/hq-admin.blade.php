@@ -6,6 +6,15 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ config('app.name', 'Laravel') }} - HQ Admin Portal</title>
     
+    <!-- Prevent sidebar flash on page load -->
+    <script>
+        (function() {
+            if (localStorage.getItem('hqAdminSidebarCollapsed') === 'true') {
+                document.documentElement.classList.add('sidebar-collapsed');
+            }
+        })();
+    </script>
+    
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
@@ -14,6 +23,23 @@
     @stack('styles')
     
     <style>
+        /* Sidebar collapsed state applied instantly via HTML class */
+        html.sidebar-collapsed .sidebar {
+            width: var(--sidebar-collapsed-width) !important;
+        }
+        html.sidebar-collapsed .main-content {
+            margin-left: var(--sidebar-collapsed-width) !important;
+        }
+        html.sidebar-collapsed .sidebar-brand {
+            opacity: 0 !important;
+            display: none !important;
+        }
+        html.sidebar-collapsed .nav-text {
+            opacity: 0 !important;
+        }
+        html.sidebar-collapsed .sidebar-toggle i {
+            transform: rotate(180deg);
+        }
         :root {
             --sidebar-width: 250px;
             --sidebar-collapsed-width: 80px;
@@ -307,13 +333,19 @@
             <li class="sidebar-menu-item">
                 <a href="{{ route('hq-admin.kpi-benchmark') }}" class="sidebar-menu-link {{ request()->routeIs('hq-admin.kpi-benchmark') ? 'active' : '' }}">
                     <i class="bi bi-trophy sidebar-menu-icon"></i>
-                    <span class="sidebar-menu-text">KPI & Benchmark</span>
+                    <span class="sidebar-menu-text">Benchmark</span>
                 </a>
             </li>
             <li class="sidebar-menu-item">
                 <a href="{{ route('hq-admin.reports') }}" class="sidebar-menu-link {{ request()->routeIs('hq-admin.reports') ? 'active' : '' }}">
                     <i class="bi bi-file-earmark-bar-graph sidebar-menu-icon"></i>
                     <span class="sidebar-menu-text">Reports</span>
+                </a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a href="{{ route('hq-admin.notifications') }}" class="sidebar-menu-link {{ request()->routeIs('hq-admin.notifications') ? 'active' : '' }}">
+                    <i class="bi bi-megaphone sidebar-menu-icon"></i>
+                    <span class="sidebar-menu-text">Notifications</span>
                 </a>
             </li>
         </ul>
@@ -329,7 +361,7 @@
             <div class="d-flex align-items-center gap-3">
                 <!-- Notifications -->
                 <div class="notification-badge">
-                    <a href="#" class="btn btn-light position-relative">
+                    <a href="{{ route('hq-admin.notifications') }}" class="btn btn-light position-relative" title="Notification Center">
                         <i class="bi bi-bell"></i>
                         @if(isset($unreadNotifications) && $unreadNotifications > 0)
                         <span class="badge bg-danger">{{ $unreadNotifications }}</span>
@@ -397,7 +429,7 @@
             localStorage.setItem('hqAdminSidebarCollapsed', isCollapsed);
         });
         
-        // Restore sidebar state from localStorage
+        // Restore sidebar state from localStorage and sync with instant CSS
         window.addEventListener('DOMContentLoaded', function() {
             const isCollapsed = localStorage.getItem('hqAdminSidebarCollapsed') === 'true';
             if (isCollapsed) {
@@ -405,6 +437,8 @@
                 mainContent.classList.add('expanded');
                 toggleIcon.className = 'bi bi-chevron-right';
             }
+            // Remove the instant style class now that proper classes are applied
+            document.documentElement.classList.remove('sidebar-collapsed');
         });
         
         // Mobile menu toggle
