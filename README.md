@@ -1,6 +1,6 @@
 # ☕ Cafe Sales Management System
 
-A comprehensive cafe management system built with Laravel for tracking sales, managing inventory, monitoring KPIs, and coordinating operations across multiple branches.
+A comprehensive cafe management system built with Laravel for tracking sales, managing inventory, monitoring benchmarks, and coordinating operations across multiple branches.
 
 ## 📋 Overview
 
@@ -9,9 +9,9 @@ This system is designed for cafe businesses with multiple branches, providing ro
 ## ✨ Features
 
 ### 🏢 Multi-Role Access
-- **HQ Admin** - Full system control, benchmark setting, reporting across all branches
-- **Branch Manager** - Branch oversight, staff KPI monitoring, local reporting
-- **Staff** - Sales submission, inventory updates, personal KPI tracking
+- **HQ Admin** - Full system control, benchmark setting, broadcast announcements, reporting across all branches
+- **Branch Manager** - Branch oversight, staff performance monitoring, local reporting
+- **Staff** - Sales submission, inventory updates, personal target tracking
 
 ### 💰 Sales Management
 - Record daily sales transactions with multiple items
@@ -19,15 +19,16 @@ This system is designed for cafe businesses with multiple branches, providing ro
 - Automatic stock deduction on sales
 - Transaction history and reporting
 
-### 📊 KPI & Performance Tracking
+### 📊 Benchmark & Performance Tracking
 - HQ-defined benchmarks (monthly sales target, transaction target, staff sales target)
-- Branch-specific KPI assignments
+- Branch-level performance monitoring
 - Real-time progress tracking with visual charts
 - Staff performance comparison
 
 ### 📦 Inventory Management
 - Product catalog with categories
-- Stock quantity tracking with +/- adjustments
+- Branch-specific stock quantity tracking
+- Product availability toggles per branch
 - Low stock alerts (< 10 units)
 - Stock change logging
 
@@ -37,16 +38,17 @@ This system is designed for cafe businesses with multiple branches, providing ro
 - CSV and PDF export functionality
 - Branch comparison reports
 
-### 🔔 Notifications
+### 🔔 Notifications & Broadcasts
+- HQ broadcast announcements to all branches
 - Low stock alerts in navigation dropdown
-- KPI target reminders
+- Target/benchmark reminders
 - Real-time notification badges
 
 ## 🛠️ Tech Stack
 
 - **Backend:** Laravel 12.x (PHP 8.4)
 - **Frontend:** Blade Templates, Bootstrap 5.3
-- **Database:** pgSQL
+- **Database:** PostgreSQL (DigitalOcean Managed Database)
 - **Charts:** Chart.js 4.4
 - **PDF Generation:** barryvdh/laravel-dompdf
 - **Build Tool:** Vite
@@ -94,10 +96,16 @@ This system is designed for cafe businesses with multiple branches, providing ro
 
 4. **Configure database** in `.env`
    ```
+   DB_CONNECTION=pgsql
+   DB_HOST=your_postgresql_host
+   DB_PORT=5432
    DB_DATABASE=cafe_sales
    DB_USERNAME=your_username
    DB_PASSWORD=your_password
+   DB_SSLMODE=prefer
    ```
+   
+   *For DigitalOcean Managed PostgreSQL, use port 25060 and set `DB_SSLMODE=require`*
 
 5. **Run migrations and seeders**
    ```bash
@@ -125,9 +133,16 @@ After seeding, you can login with:
 
 - **Staff Dashboard** - Sales summary, category pie chart, quick actions
 - **Submit Sales** - Add items, apply discounts, select payment method
-- **My KPI** - Personal targets, progress bars, branch performance
-- **Inventory** - Product list with stock controls
+- **My Target** - Personal sales targets, progress tracking, branch performance
+- **Inventory** - Product list with availability toggles and stock controls
 - **HQ Reports** - Branch comparison, export to CSV/PDF
+- **HQ Notifications** - Broadcast announcements to branches
+
+## 🗄️ Database
+
+This project uses **PostgreSQL** as the database system. It is configured to work with:
+- Local PostgreSQL installations
+- DigitalOcean Managed PostgreSQL clusters (with SSL)
 
 ## 📄 License
 
