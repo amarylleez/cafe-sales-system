@@ -20,6 +20,78 @@
         </div>
     </div>
 
+    <!-- Profit/Loss Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted mb-1">Total Revenue</p>
+                            <h4 class="mb-0 text-primary">RM {{ number_format($totalRevenue, 2) }}</h4>
+                        </div>
+                        <div class="icon-box bg-primary bg-opacity-10 rounded-circle p-3">
+                            <i class="bi bi-currency-dollar text-primary fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted mb-1">Gross Profit</p>
+                            <h4 class="mb-0 text-success">RM {{ number_format($grossProfit, 2) }}</h4>
+                        </div>
+                        <div class="icon-box bg-success bg-opacity-10 rounded-circle p-3">
+                            <i class="bi bi-graph-up-arrow text-success fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted mb-1">Stock Loss</p>
+                            <h4 class="mb-2 text-danger">RM {{ number_format($stockLoss, 2) }}</h4>
+                            <div class="d-flex flex-column gap-1">
+                                <span class="badge bg-warning text-dark" style="font-size: 0.7rem;">
+                                    <i class="bi bi-clock-history"></i> Unsold: RM {{ number_format($unsoldStockLoss, 2) }}
+                                </span>
+                                <span class="badge bg-danger" style="font-size: 0.7rem;">
+                                    <i class="bi bi-x-circle"></i> Rejected: RM {{ number_format($rejectedSalesLoss, 2) }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="icon-box bg-danger bg-opacity-10 rounded-circle p-3">
+                            <i class="bi bi-exclamation-triangle text-danger fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm border-0 h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <p class="text-muted mb-1">Profit Margin</p>
+                            <h4 class="mb-0" style="color: #423A8E;">{{ number_format($profitMargin, 1) }}%</h4>
+                        </div>
+                        <div class="icon-box rounded-circle p-3" style="background: rgba(66, 58, 142, 0.1);">
+                            <i class="bi bi-percent fs-4" style="color: #423A8E;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Branch Performance Comparison (Monthly Sales) -->
     <div class="row mb-4">
         <div class="col-12">
@@ -98,6 +170,164 @@
         </div>
     </div>
 
+    <!-- Branch Profit Analysis -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-cash-coin"></i> Branch Profit Analysis</h5>
+                    <span class="badge bg-secondary">{{ $startDate->format('M d') }} - {{ $endDate->format('M d, Y') }}</span>
+                </div>
+                <div class="card-body">
+                    <canvas id="branchProfitChart" height="120"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-star-fill text-warning"></i> Top Profitable Products</h5>
+                </div>
+                <div class="card-body">
+                    @if($topProfitableProducts->count() > 0)
+                        @foreach($topProfitableProducts as $index => $productData)
+                        <div class="d-flex justify-content-between align-items-center {{ $index < $topProfitableProducts->count() - 1 ? 'mb-3 pb-3 border-bottom' : '' }}">
+                            <div>
+                                <strong>{{ $productData['product']->name ?? 'Unknown' }}</strong>
+                                <br><small class="text-muted">{{ $productData['quantity_sold'] }} sold</small>
+                            </div>
+                            <div class="text-end">
+                                <span class="text-success fw-bold">RM {{ number_format($productData['profit'], 2) }}</span>
+                                <br><small class="text-muted">{{ $productData['revenue'] > 0 ? number_format(($productData['profit'] / $productData['revenue']) * 100, 1) : 0 }}% margin</small>
+                            </div>
+                        </div>
+                        @endforeach
+                    @else
+                        <p class="text-muted text-center mb-0">No sales data available</p>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stock Loss Warning -->
+    @if($potentialLossStock->count() > 0)
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="bi bi-exclamation-triangle-fill"></i> Unsold Stock (Potential Loss)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Branch</th>
+                                    <th>Quantity</th>
+                                    <th>Stocked Date</th>
+                                    <th>Days Unsold</th>
+                                    <th>Potential Loss</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($potentialLossStock->take(5) as $stock)
+                                <tr>
+                                    <td><strong>{{ $stock->product->name ?? 'Unknown' }}</strong></td>
+                                    <td>{{ $stock->branch->name ?? 'Unknown' }}</td>
+                                    <td>{{ $stock->stock_quantity }}</td>
+                                    <td>{{ $stock->received_date ? \Carbon\Carbon::parse($stock->received_date)->format('M d, Y') : 'N/A' }}</td>
+                                    <td>
+                                        @php $daysUnsold = $stock->received_date ? now()->diffInDays($stock->received_date) : 0; @endphp
+                                        <span class="badge bg-{{ $daysUnsold >= 3 ? 'danger' : 'warning' }}">
+                                            {{ $daysUnsold }} days
+                                        </span>
+                                    </td>
+                                    <td class="text-danger">RM {{ number_format($stock->stock_quantity * ($stock->cost_at_purchase ?? $stock->product->cost_price ?? 0), 2) }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <!-- Rejected Transactions Warning -->
+    @if($rejectedSales->count() > 0)
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0"><i class="bi bi-x-circle-fill"></i> Rejected Transactions (Loss from Invalid Sales)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Transaction ID</th>
+                                    <th>Branch</th>
+                                    <th>Staff</th>
+                                    <th>Date</th>
+                                    <th>Items</th>
+                                    <th>Loss Amount</th>
+                                    <th>Reason</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($rejectedSales->take(5) as $sale)
+                                @php
+                                    $saleLoss = $sale->items->sum(function($item) {
+                                        return $item->quantity * ($item->product->cost_price ?? 0);
+                                    });
+                                    // Extract reason from notes field
+                                    $reason = 'No reason provided';
+                                    if ($sale->notes && preg_match('/Reason:\s*(.+?)(?:\n|$)/i', $sale->notes, $matches)) {
+                                        $reason = trim($matches[1]);
+                                    }
+                                @endphp
+                                <tr>
+                                    <td><strong>{{ $sale->transaction_id ?? 'TXN-'.$sale->id }}</strong></td>
+                                    <td>{{ $sale->branch->name ?? 'Unknown' }}</td>
+                                    <td>{{ $sale->staff->name ?? 'Unknown' }}</td>
+                                    <td>{{ \Carbon\Carbon::parse($sale->sale_date)->format('M d, Y') }}</td>
+                                    <td>{{ $sale->items->sum('quantity') }} items</td>
+                                    <td class="text-danger"><strong>RM {{ number_format($saleLoss, 2) }}</strong></td>
+                                    <td><small class="text-muted">{{ $reason }}</small></td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    @if($rejectedSales->count() > 5)
+                    <div class="text-center mt-3">
+                        <small class="text-muted">Showing 5 of {{ $rejectedSales->count() }} rejected transactions</small>
+                    </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <!-- Monthly Profit Trend -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-graph-up"></i> Monthly Profit Trend (Last 6 Months)</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="monthlyProfitTrendChart" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Detailed Branch Analysis -->
     <div class="row">
         <div class="col-12">
@@ -114,14 +344,18 @@
                                     <th>This Month</th>
                                     <th>Last Month</th>
                                     <th>Growth</th>
-                                    <th>Transactions</th>
-                                    <th>Staff Count</th>
-                                    <th>Avg. Sales/Staff</th>
+                                    <th>Revenue</th>
+                                    <th>Cost</th>
+                                    <th>Profit</th>
+                                    <th>Margin</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($branchAnalysis as $branch)
+                                @php
+                                    $profitInfo = $branchProfitData->firstWhere('branch.id', $branch->id);
+                                @endphp
                                 <tr>
                                     <td>
                                         <strong>{{ $branch->name }}</strong>
@@ -135,9 +369,16 @@
                                             {{ number_format(abs($branch->growth), 1) }}%
                                         </span>
                                     </td>
-                                    <td>{{ number_format($branch->transactions) }}</td>
-                                    <td>{{ $branch->staffCount }}</td>
-                                    <td>RM {{ number_format($branch->avgSalesPerStaff, 2) }}</td>
+                                    <td>RM {{ number_format($profitInfo['revenue'] ?? 0, 2) }}</td>
+                                    <td>RM {{ number_format($profitInfo['cost'] ?? 0, 2) }}</td>
+                                    <td class="text-{{ ($profitInfo['gross_profit'] ?? 0) >= 0 ? 'success' : 'danger' }}">
+                                        <strong>RM {{ number_format($profitInfo['gross_profit'] ?? 0, 2) }}</strong>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-{{ ($profitInfo['margin'] ?? 0) >= 30 ? 'success' : (($profitInfo['margin'] ?? 0) >= 15 ? 'warning' : 'danger') }}">
+                                            {{ number_format($profitInfo['margin'] ?? 0, 1) }}%
+                                        </span>
+                                    </td>
                                     <td>
                                         <span class="badge bg-{{ $branch->growth >= 10 ? 'success' : ($branch->growth >= 0 ? 'info' : 'warning') }}">
                                             @if($branch->growth >= 10)
@@ -180,6 +421,131 @@ document.addEventListener('DOMContentLoaded', function() {
                 tension: 0.4,
                 fill: true
             }))
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': RM ' + context.parsed.y.toLocaleString();
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'RM ' + value.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Branch Profit Chart
+    const branchProfitData = @json($branchProfitData);
+    const profitCtx = document.getElementById('branchProfitChart');
+    
+    new Chart(profitCtx, {
+        type: 'bar',
+        data: {
+            labels: branchProfitData.map(b => b.branch.name),
+            datasets: [
+                {
+                    label: 'Revenue',
+                    data: branchProfitData.map(b => b.revenue),
+                    backgroundColor: 'rgba(66, 58, 142, 0.7)',
+                    borderColor: '#423A8E',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Cost',
+                    data: branchProfitData.map(b => b.cost),
+                    backgroundColor: 'rgba(220, 53, 69, 0.7)',
+                    borderColor: '#dc3545',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Profit',
+                    data: branchProfitData.map(b => b.gross_profit),
+                    backgroundColor: 'rgba(25, 135, 84, 0.7)',
+                    borderColor: '#198754',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': RM ' + context.parsed.y.toLocaleString();
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'RM ' + value.toLocaleString();
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Monthly Profit Trend Chart
+    const monthlyTrendData = @json($monthlyProfitTrend);
+    const trendCtx = document.getElementById('monthlyProfitTrendChart');
+    
+    new Chart(trendCtx, {
+        type: 'line',
+        data: {
+            labels: monthlyTrendData.labels,
+            datasets: [
+                {
+                    label: 'Revenue',
+                    data: monthlyTrendData.revenue,
+                    borderColor: '#423A8E',
+                    backgroundColor: 'rgba(66, 58, 142, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                },
+                {
+                    label: 'Cost',
+                    data: monthlyTrendData.cost,
+                    borderColor: '#dc3545',
+                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                },
+                {
+                    label: 'Profit',
+                    data: monthlyTrendData.profit,
+                    borderColor: '#198754',
+                    backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }
+            ]
         },
         options: {
             responsive: true,

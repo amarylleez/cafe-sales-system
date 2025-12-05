@@ -153,8 +153,8 @@
                         <a href="{{ route('branch-manager.sales-report') }}" class="btn btn-outline-primary">
                             <i class="bi bi-file-earmark-text"></i> View Sales Reports
                         </a>
-                        <a href="{{ route('branch-manager.kpi-benchmark') }}" class="btn btn-outline-success">
-                            <i class="bi bi-graph-up"></i> Check KPI Progress
+                        <a href="{{ route('branch-manager.performance') }}" class="btn btn-outline-success">
+                            <i class="bi bi-graph-up"></i> Check Performance
                         </a>
                         <a href="{{ route('branch-manager.team-overview') }}" class="btn btn-outline-info">
                             <i class="bi bi-people"></i> Manage Team

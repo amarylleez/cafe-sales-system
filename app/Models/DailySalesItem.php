@@ -53,6 +53,14 @@ class DailySalesItem extends Model
     }
 
     /**
+     * Alias for sale() relationship
+     */
+    public function dailySale(): BelongsTo
+    {
+        return $this->belongsTo(DailySale::class, 'daily_sale_id');
+    }
+
+    /**
      * Get the product
      */
     public function product(): BelongsTo

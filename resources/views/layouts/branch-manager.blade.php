@@ -332,9 +332,9 @@
                 </a>
             </li>
             <li class="sidebar-menu-item">
-                <a href="{{ route('branch-manager.kpi-benchmark') }}" class="sidebar-menu-link {{ request()->routeIs('branch-manager.kpi-benchmark') ? 'active' : '' }}">
+                <a href="{{ route('branch-manager.performance') }}" class="sidebar-menu-link {{ request()->routeIs('branch-manager.performance') ? 'active' : '' }}">
                     <i class="bi bi-graph-up sidebar-menu-icon"></i>
-                    <span class="sidebar-menu-text">Benchmark</span>
+                    <span class="sidebar-menu-text">Performance</span>
                 </a>
             </li>
             <li class="sidebar-menu-item">

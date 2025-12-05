@@ -35,7 +35,7 @@ This system is designed for cafe businesses with multiple branches, providing ro
 ### 📈 Reporting & Analytics
 - Sales summary (daily, weekly, monthly)
 - Category-based sales pie charts
-- CSV and PDF export functionality
+- PDF export functionality
 - Branch comparison reports
 
 ### 🔔 Notifications & Broadcasts
@@ -135,7 +135,7 @@ After seeding, you can login with:
 - **Submit Sales** - Add items, apply discounts, select payment method
 - **My Target** - Personal sales targets, progress tracking, branch performance
 - **Inventory** - Product list with availability toggles and stock controls
-- **HQ Reports** - Branch comparison, export to CSV/PDF
+- **HQ Reports** - Branch comparison, export to PDF
 - **HQ Notifications** - Broadcast announcements to branches
 
 ## 🗄️ Database

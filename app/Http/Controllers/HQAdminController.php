@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Branch;
 use App\Models\User;
 use App\Models\DailySale;
+use App\Models\DailySalesItem;
+use App\Models\Product;
+use App\Models\BranchStock;
 use App\Models\KPI;
 use App\Models\Benchmark;
 use App\Models\Notification;
@@ -180,7 +183,7 @@ class HQAdminController extends Controller
     /**
      * Show analytics page
      */
-    public function analytics()
+    public function analytics(Request $request)
     {
         $currentMonth = Carbon::now();
         $lastMonth = Carbon::now()->subMonth();
@@ -194,10 +197,210 @@ class HQAdminController extends Controller
         // Detailed branch analysis
         $branchAnalysis = $this->getDetailedBranchAnalysis($currentMonth, $lastMonth);
 
+        // ===== PROFIT/LOSS DATA =====
+        // Date range filter
+        $dateRange = $request->input('date_range', 'month');
+        $branchFilter = $request->input('branch');
+        
+        // Determine date boundaries
+        switch ($dateRange) {
+            case 'today':
+                $startDate = Carbon::today();
+                $endDate = Carbon::today();
+                break;
+            case 'week':
+                $startDate = Carbon::now()->startOfWeek();
+                $endDate = Carbon::now()->endOfWeek();
+                break;
+            case 'month':
+                $startDate = Carbon::now()->startOfMonth();
+                $endDate = Carbon::now()->endOfMonth();
+                break;
+            case 'quarter':
+                $startDate = Carbon::now()->startOfQuarter();
+                $endDate = Carbon::now()->endOfQuarter();
+                break;
+            case 'year':
+                $startDate = Carbon::now()->startOfYear();
+                $endDate = Carbon::now()->endOfYear();
+                break;
+            default:
+                $startDate = Carbon::now()->startOfMonth();
+                $endDate = Carbon::now()->endOfMonth();
+        }
+
+        // Get all branches for filter
+        $branches = Branch::all();
+
+        // Build query for sales items with product cost
+        $salesQuery = DailySalesItem::with(['product', 'dailySale.branch'])
+            ->whereHas('dailySale', function($q) use ($startDate, $endDate, $branchFilter) {
+                $q->whereBetween('sale_date', [$startDate, $endDate])
+                  ->where('status', 'completed');
+                  
+                if ($branchFilter) {
+                    $q->where('branch_id', $branchFilter);
+                }
+            });
+
+        // Calculate totals
+        $salesItems = $salesQuery->get();
+        
+        $totalRevenue = 0;
+        $totalCost = 0;
+        $productProfitData = [];
+
+        foreach ($salesItems as $item) {
+            $revenue = $item->total;
+            $cost = $item->quantity * ($item->product->cost_price ?? 0);
+            
+            $totalRevenue += $revenue;
+            $totalCost += $cost;
+            
+            // Aggregate by product
+            $productId = $item->product_id;
+            if (!isset($productProfitData[$productId])) {
+                $productProfitData[$productId] = [
+                    'product' => $item->product,
+                    'quantity_sold' => 0,
+                    'revenue' => 0,
+                    'cost' => 0,
+                    'profit' => 0
+                ];
+            }
+            $productProfitData[$productId]['quantity_sold'] += $item->quantity;
+            $productProfitData[$productId]['revenue'] += $revenue;
+            $productProfitData[$productId]['cost'] += $cost;
+            $productProfitData[$productId]['profit'] += ($revenue - $cost);
+        }
+
+        $grossProfit = $totalRevenue - $totalCost;
+        $profitMargin = $totalRevenue > 0 ? ($grossProfit / $totalRevenue) * 100 : 0;
+
+        // Sort products by profit (descending)
+        $productProfitData = collect($productProfitData)->sortByDesc('profit')->values();
+        
+        // Top 5 profitable products
+        $topProfitableProducts = $productProfitData->take(5);
+
+        // Calculate stock loss from unsold items (items stocked more than 1 day ago that haven't been sold)
+        $stockLossQuery = BranchStock::with('product')
+            ->where('stock_quantity', '>', 0)
+            ->where(function($q) {
+                // Stock that was received yesterday or earlier (unsold for at least 1 day)
+                $q->whereNotNull('received_date')
+                  ->where('received_date', '<', Carbon::today());
+            });
+            
+        if ($branchFilter) {
+            $stockLossQuery->where('branch_id', $branchFilter);
+        }
+        
+        $unsoldStock = $stockLossQuery->get();
+        $unsoldStockLoss = $unsoldStock->sum(function($stock) {
+            return $stock->stock_quantity * ($stock->cost_at_purchase ?? $stock->product->cost_price ?? 0);
+        });
+
+        // Calculate loss from rejected transactions (stock already deducted but sale not counted)
+        $rejectedSalesQuery = DailySalesItem::with(['product', 'dailySale'])
+            ->whereHas('dailySale', function($q) use ($startDate, $endDate, $branchFilter) {
+                $q->whereBetween('sale_date', [$startDate, $endDate])
+                  ->where('status', 'rejected');
+                  
+                if ($branchFilter) {
+                    $q->where('branch_id', $branchFilter);
+                }
+            });
+        
+        $rejectedItems = $rejectedSalesQuery->get();
+        $rejectedSalesLoss = $rejectedItems->sum(function($item) {
+            return $item->quantity * ($item->product->cost_price ?? 0);
+        });
+
+        // Total stock loss = unsold stock + rejected sales
+        $stockLoss = $unsoldStockLoss + $rejectedSalesLoss;
+
+        // Get potential loss stock (items unsold for more than 1 day - for warning display)
+        $potentialLossQuery = BranchStock::with(['product', 'branch'])
+            ->where('stock_quantity', '>', 0)
+            ->whereNotNull('received_date')
+            ->where('received_date', '<', Carbon::today());
+            
+        if ($branchFilter) {
+            $potentialLossQuery->where('branch_id', $branchFilter);
+        }
+        
+        $potentialLossStock = $potentialLossQuery->orderBy('received_date', 'asc')->get();
+
+        // Get rejected sales for display
+        $rejectedSales = DailySale::with(['items.product', 'branch', 'staff'])
+            ->whereBetween('sale_date', [$startDate, $endDate])
+            ->where('status', 'rejected');
+            
+        if ($branchFilter) {
+            $rejectedSales->where('branch_id', $branchFilter);
+        }
+        
+        $rejectedSales = $rejectedSales->orderBy('sale_date', 'desc')->get();
+
+        // Net profit (after stock loss)
+        $netProfit = $grossProfit - $stockLoss;
+
+        // Branch-wise profit breakdown
+        $branchProfitData = [];
+        $salesByBranch = DailySalesItem::with(['product', 'dailySale.branch'])
+            ->whereHas('dailySale', function($q) use ($startDate, $endDate) {
+                $q->whereBetween('sale_date', [$startDate, $endDate])
+                  ->where('status', 'completed');
+            })
+            ->get()
+            ->groupBy('dailySale.branch_id');
+
+        foreach ($salesByBranch as $branchId => $items) {
+            $branch = Branch::find($branchId);
+            if (!$branch) continue;
+            
+            $branchRevenue = $items->sum('total');
+            $branchCost = $items->sum(function($item) {
+                return $item->quantity * ($item->product->cost_price ?? 0);
+            });
+            
+            $branchProfitData[] = [
+                'branch' => $branch,
+                'revenue' => $branchRevenue,
+                'cost' => $branchCost,
+                'gross_profit' => $branchRevenue - $branchCost,
+                'margin' => $branchRevenue > 0 ? (($branchRevenue - $branchCost) / $branchRevenue) * 100 : 0
+            ];
+        }
+        
+        $branchProfitData = collect($branchProfitData)->sortByDesc('gross_profit')->values();
+
+        // Monthly profit trend data (last 6 months)
+        $monthlyProfitTrend = $this->getMonthlyProfitTrend($branchFilter);
+
         return view('hq-admin.analytics', compact(
             'topBranches',
             'comparisonData',
-            'branchAnalysis'
+            'branchAnalysis',
+            // Profit/Loss data
+            'branches',
+            'totalRevenue',
+            'totalCost',
+            'grossProfit',
+            'netProfit',
+            'profitMargin',
+            'stockLoss',
+            'unsoldStockLoss',
+            'rejectedSalesLoss',
+            'potentialLossStock',
+            'rejectedSales',
+            'topProfitableProducts',
+            'branchProfitData',
+            'monthlyProfitTrend',
+            'startDate',
+            'endDate',
+            'dateRange'
         ));
     }
 
@@ -789,60 +992,179 @@ class HQAdminController extends Controller
     }
 
     /**
-     * Export reports as CSV
-     */
-    public function exportCSV(Request $request)
-    {
-        $query = DailySale::with(['branch', 'staff']);
-
-        // Apply same filters as reports page
-        $this->applyReportFilters($query, $request);
-
-        $reports = $query->orderBy('sale_date', 'desc')->get();
-        
-        // If no reports found with filter, get all reports
-        if ($reports->isEmpty()) {
-            $reports = DailySale::with(['branch', 'staff'])->orderBy('sale_date', 'desc')->get();
-        }
-
-        $filename = 'sales-reports-' . Carbon::now()->format('Y-m-d') . '.csv';
-        
-        // Build CSV content with BOM for Excel compatibility
-        $csvContent = "\xEF\xBB\xBF"; // UTF-8 BOM
-        $csvContent .= "Report ID,Date,Branch,Staff,Total Amount,Transactions,Status\n";
-        
-        foreach ($reports as $report) {
-            $branchName = $report->branch ? $report->branch->name : 'N/A';
-            $staffName = $report->staff ? $report->staff->name : 'N/A';
-            
-            $csvContent .= implode(',', [
-                $report->id,
-                '"' . $report->sale_date->format('d-M-Y') . '"',
-                '"' . str_replace('"', '""', $branchName) . '"',
-                '"' . str_replace('"', '""', $staffName) . '"',
-                $report->total_amount,
-                $report->items_count ?? 0,
-                $report->status
-            ]) . "\n";
-        }
-
-        return response($csvContent)
-            ->header('Content-Type', 'text/csv; charset=UTF-8')
-            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
-    }
-
-    /**
      * Export reports as PDF
      */
     public function exportPDF(Request $request)
     {
-        $query = DailySale::with(['branch', 'staff']);
-        $this->applyReportFilters($query, $request);
-        $reports = $query->get();
-
-        $pdf = PDF::loadView('hq-admin.pdf.reports', compact('reports'));
+        $dateRange = $request->input('date_range', '');
+        $branchFilter = $request->input('branch', '');
+        $statusFilter = $request->input('status', '');
         
-        return $pdf->download('sales-reports-' . Carbon::now()->format('Y-m-d') . '.pdf');
+        // Determine date boundaries
+        switch ($dateRange) {
+            case 'today':
+                $startDate = Carbon::today();
+                $endDate = Carbon::today();
+                $dateRangeLabel = 'Today (' . $startDate->format('M d, Y') . ')';
+                break;
+            case 'week':
+                $startDate = Carbon::now()->startOfWeek();
+                $endDate = Carbon::now()->endOfWeek();
+                $dateRangeLabel = 'This Week (' . $startDate->format('M d') . ' - ' . $endDate->format('M d, Y') . ')';
+                break;
+            case 'month':
+                $startDate = Carbon::now()->startOfMonth();
+                $endDate = Carbon::now()->endOfMonth();
+                $dateRangeLabel = 'This Month (' . $startDate->format('M Y') . ')';
+                break;
+            case 'custom':
+                $startDate = $request->input('start_date') ? Carbon::parse($request->input('start_date')) : Carbon::now()->startOfMonth();
+                $endDate = $request->input('end_date') ? Carbon::parse($request->input('end_date')) : Carbon::now();
+                $dateRangeLabel = 'Custom (' . $startDate->format('M d, Y') . ' - ' . $endDate->format('M d, Y') . ')';
+                break;
+            default:
+                $startDate = null;
+                $endDate = null;
+                $dateRangeLabel = 'All Time';
+        }
+        
+        // Get branches for report
+        $branches = Branch::all();
+        $selectedBranch = $branchFilter ? Branch::find($branchFilter) : null;
+        
+        // Build profit/loss data per branch
+        $branchProfitData = [];
+        $overallTotals = [
+            'revenue' => 0,
+            'cost' => 0,
+            'grossProfit' => 0,
+            'rejectedLoss' => 0,
+            'netProfit' => 0,
+            'transactions' => 0
+        ];
+        
+        $branchesToProcess = $branchFilter ? [$selectedBranch] : $branches;
+        
+        foreach ($branchesToProcess as $branch) {
+            if (!$branch) continue;
+            
+            // Get completed sales for this branch
+            $salesQuery = DailySalesItem::with(['product', 'dailySale'])
+                ->whereHas('dailySale', function($q) use ($startDate, $endDate, $branch) {
+                    $q->where('branch_id', $branch->id)
+                      ->where('status', 'completed');
+                    if ($startDate && $endDate) {
+                        $q->whereBetween('sale_date', [$startDate, $endDate]);
+                    }
+                });
+            
+            $salesItems = $salesQuery->get();
+            
+            $branchRevenue = 0;
+            $branchCost = 0;
+            
+            foreach ($salesItems as $item) {
+                $revenue = $item->total;
+                $cost = $item->quantity * ($item->product->cost_price ?? 0);
+                $branchRevenue += $revenue;
+                $branchCost += $cost;
+            }
+            
+            // Get rejected sales loss
+            $rejectedQuery = DailySale::where('branch_id', $branch->id)
+                ->where('status', 'rejected');
+            if ($startDate && $endDate) {
+                $rejectedQuery->whereBetween('sale_date', [$startDate, $endDate]);
+            }
+            $rejectedLoss = $rejectedQuery->sum('total_amount');
+            
+            // Transaction count
+            $transactionQuery = DailySale::where('branch_id', $branch->id)
+                ->where('status', 'completed');
+            if ($startDate && $endDate) {
+                $transactionQuery->whereBetween('sale_date', [$startDate, $endDate]);
+            }
+            $transactionCount = $transactionQuery->count();
+            
+            $grossProfit = $branchRevenue - $branchCost;
+            $netProfit = $grossProfit - $rejectedLoss;
+            
+            $branchProfitData[] = [
+                'branch' => $branch,
+                'revenue' => $branchRevenue,
+                'cost' => $branchCost,
+                'grossProfit' => $grossProfit,
+                'rejectedLoss' => $rejectedLoss,
+                'netProfit' => $netProfit,
+                'transactions' => $transactionCount,
+                'profitMargin' => $branchRevenue > 0 ? ($grossProfit / $branchRevenue) * 100 : 0
+            ];
+            
+            // Add to overall totals
+            $overallTotals['revenue'] += $branchRevenue;
+            $overallTotals['cost'] += $branchCost;
+            $overallTotals['grossProfit'] += $grossProfit;
+            $overallTotals['rejectedLoss'] += $rejectedLoss;
+            $overallTotals['netProfit'] += $netProfit;
+            $overallTotals['transactions'] += $transactionCount;
+        }
+        
+        $overallTotals['profitMargin'] = $overallTotals['revenue'] > 0 
+            ? ($overallTotals['grossProfit'] / $overallTotals['revenue']) * 100 
+            : 0;
+        
+        // Sort branches by net profit (descending)
+        usort($branchProfitData, function($a, $b) {
+            return $b['netProfit'] <=> $a['netProfit'];
+        });
+        
+        // Get top products
+        $topProductsQuery = DailySalesItem::with(['product'])
+            ->select('product_id')
+            ->selectRaw('SUM(quantity) as total_qty')
+            ->selectRaw('SUM(total) as total_revenue');
+        
+        if ($branchFilter) {
+            $topProductsQuery->whereHas('dailySale', function($q) use ($branchFilter, $startDate, $endDate) {
+                $q->where('branch_id', $branchFilter)->where('status', 'completed');
+                if ($startDate && $endDate) {
+                    $q->whereBetween('sale_date', [$startDate, $endDate]);
+                }
+            });
+        } else {
+            $topProductsQuery->whereHas('dailySale', function($q) use ($startDate, $endDate) {
+                $q->where('status', 'completed');
+                if ($startDate && $endDate) {
+                    $q->whereBetween('sale_date', [$startDate, $endDate]);
+                }
+            });
+        }
+        
+        $topProducts = $topProductsQuery->groupBy('product_id')
+            ->orderByDesc('total_revenue')
+            ->limit(10)
+            ->get()
+            ->map(function($item) {
+                $product = $item->product;
+                $cost = $item->total_qty * ($product->cost_price ?? 0);
+                return [
+                    'name' => $product->name ?? 'Unknown',
+                    'quantity' => $item->total_qty,
+                    'revenue' => $item->total_revenue,
+                    'cost' => $cost,
+                    'profit' => $item->total_revenue - $cost
+                ];
+            });
+        
+        $pdf = PDF::loadView('hq-admin.pdf.reports', compact(
+            'branchProfitData', 
+            'overallTotals', 
+            'dateRangeLabel', 
+            'selectedBranch',
+            'topProducts'
+        ));
+        
+        return $pdf->download('profit-loss-report-' . Carbon::now()->format('Y-m-d') . '.pdf');
     }
 
     /**
@@ -881,6 +1203,360 @@ class HQAdminController extends Controller
         if ($status && $status !== '') {
             $query->where('status', $status);
         }
+    }
+
+    // ========== PROFIT & LOSS METHODS ==========
+
+    /**
+     * Show Profit & Loss page
+     */
+    public function profitLoss(Request $request)
+    {
+        $currentMonth = Carbon::now();
+        $lastMonth = Carbon::now()->subMonth();
+        
+        // Date range filter
+        $dateRange = $request->input('date_range', 'month');
+        $branchFilter = $request->input('branch');
+        
+        // Determine date boundaries
+        switch ($dateRange) {
+            case 'today':
+                $startDate = Carbon::today();
+                $endDate = Carbon::today();
+                break;
+            case 'week':
+                $startDate = Carbon::now()->startOfWeek();
+                $endDate = Carbon::now()->endOfWeek();
+                break;
+            case 'month':
+                $startDate = Carbon::now()->startOfMonth();
+                $endDate = Carbon::now()->endOfMonth();
+                break;
+            case 'quarter':
+                $startDate = Carbon::now()->startOfQuarter();
+                $endDate = Carbon::now()->endOfQuarter();
+                break;
+            case 'year':
+                $startDate = Carbon::now()->startOfYear();
+                $endDate = Carbon::now()->endOfYear();
+                break;
+            case 'custom':
+                $startDate = $request->input('start_date') ? Carbon::parse($request->input('start_date')) : Carbon::now()->startOfMonth();
+                $endDate = $request->input('end_date') ? Carbon::parse($request->input('end_date')) : Carbon::now();
+                break;
+            default:
+                $startDate = Carbon::now()->startOfMonth();
+                $endDate = Carbon::now()->endOfMonth();
+        }
+
+        // Get all branches for filter
+        $branches = Branch::all();
+
+        // Build query for sales items with product cost
+        $salesQuery = DailySalesItem::with(['product', 'dailySale.branch'])
+            ->whereHas('dailySale', function($q) use ($startDate, $endDate, $branchFilter) {
+                $q->whereBetween('sale_date', [$startDate, $endDate])
+                  ->where('status', 'completed');
+                  
+                if ($branchFilter) {
+                    $q->where('branch_id', $branchFilter);
+                }
+            });
+
+        // Calculate totals
+        $salesItems = $salesQuery->get();
+        
+        $totalRevenue = 0;
+        $totalCost = 0;
+        $productProfitData = [];
+
+        foreach ($salesItems as $item) {
+            $revenue = $item->total;
+            $cost = $item->quantity * ($item->product->cost_price ?? 0);
+            
+            $totalRevenue += $revenue;
+            $totalCost += $cost;
+            
+            // Aggregate by product
+            $productId = $item->product_id;
+            if (!isset($productProfitData[$productId])) {
+                $productProfitData[$productId] = [
+                    'product' => $item->product,
+                    'quantity_sold' => 0,
+                    'revenue' => 0,
+                    'cost' => 0,
+                    'profit' => 0
+                ];
+            }
+            $productProfitData[$productId]['quantity_sold'] += $item->quantity;
+            $productProfitData[$productId]['revenue'] += $revenue;
+            $productProfitData[$productId]['cost'] += $cost;
+            $productProfitData[$productId]['profit'] += ($revenue - $cost);
+        }
+
+        $grossProfit = $totalRevenue - $totalCost;
+        $profitMargin = $totalRevenue > 0 ? ($grossProfit / $totalRevenue) * 100 : 0;
+
+        // Sort products by profit (descending)
+        $productProfitData = collect($productProfitData)->sortByDesc('profit')->values();
+        
+        // Top 5 profitable products
+        $topProfitableProducts = $productProfitData->take(5);
+        
+        // Bottom 5 (least profitable/loss-making)
+        $leastProfitableProducts = $productProfitData->sortBy('profit')->take(5);
+
+        // Calculate expired stock loss
+        $expiredStockQuery = BranchStock::with('product')
+            ->expired()
+            ->where('stock_quantity', '>', 0);
+            
+        if ($branchFilter) {
+            $expiredStockQuery->where('branch_id', $branchFilter);
+        }
+        
+        $expiredStock = $expiredStockQuery->get();
+        $expiredStockLoss = $expiredStock->sum(function($stock) {
+            return $stock->stock_quantity * ($stock->cost_at_purchase ?? $stock->product->cost_price ?? 0);
+        });
+
+        // Calculate expiring soon stock (within 7 days)
+        $expiringSoonQuery = BranchStock::with(['product', 'branch'])
+            ->expiringSoon(7)
+            ->where('stock_quantity', '>', 0);
+            
+        if ($branchFilter) {
+            $expiringSoonQuery->where('branch_id', $branchFilter);
+        }
+        
+        $expiringSoonStock = $expiringSoonQuery->get();
+        $potentialLoss = $expiringSoonStock->sum(function($stock) {
+            return $stock->stock_quantity * ($stock->cost_at_purchase ?? $stock->product->cost_price ?? 0);
+        });
+
+        // Net profit (after expired stock loss)
+        $netProfit = $grossProfit - $expiredStockLoss;
+
+        // Branch-wise profit breakdown
+        $branchProfitData = [];
+        $salesByBranch = DailySalesItem::with(['product', 'dailySale.branch'])
+            ->whereHas('dailySale', function($q) use ($startDate, $endDate) {
+                $q->whereBetween('sale_date', [$startDate, $endDate])
+                  ->where('status', 'completed');
+            })
+            ->get()
+            ->groupBy('dailySale.branch_id');
+
+        foreach ($salesByBranch as $branchId => $items) {
+            $branch = Branch::find($branchId);
+            if (!$branch) continue;
+            
+            $branchRevenue = $items->sum('total');
+            $branchCost = $items->sum(function($item) {
+                return $item->quantity * ($item->product->cost_price ?? 0);
+            });
+            
+            // Get expired stock loss for this branch
+            $branchExpiredLoss = BranchStock::where('branch_id', $branchId)
+                ->expired()
+                ->where('stock_quantity', '>', 0)
+                ->get()
+                ->sum(function($stock) {
+                    return $stock->stock_quantity * ($stock->cost_at_purchase ?? $stock->product->cost_price ?? 0);
+                });
+            
+            $branchProfitData[] = [
+                'branch' => $branch,
+                'revenue' => $branchRevenue,
+                'cost' => $branchCost,
+                'gross_profit' => $branchRevenue - $branchCost,
+                'expired_loss' => $branchExpiredLoss,
+                'net_profit' => ($branchRevenue - $branchCost) - $branchExpiredLoss,
+                'margin' => $branchRevenue > 0 ? (($branchRevenue - $branchCost) / $branchRevenue) * 100 : 0
+            ];
+        }
+        
+        $branchProfitData = collect($branchProfitData)->sortByDesc('net_profit')->values();
+
+        // Monthly trend data (last 6 months)
+        $monthlyTrendData = $this->getMonthlyProfitTrend($branchFilter);
+
+        // Category breakdown
+        $categoryProfitData = $this->getCategoryProfitBreakdown($startDate, $endDate, $branchFilter);
+
+        return view('hq-admin.profit-loss', compact(
+            'branches',
+            'totalRevenue',
+            'totalCost',
+            'grossProfit',
+            'netProfit',
+            'profitMargin',
+            'expiredStockLoss',
+            'potentialLoss',
+            'expiredStock',
+            'expiringSoonStock',
+            'productProfitData',
+            'topProfitableProducts',
+            'leastProfitableProducts',
+            'branchProfitData',
+            'monthlyTrendData',
+            'categoryProfitData',
+            'startDate',
+            'endDate',
+            'dateRange'
+        ));
+    }
+
+    /**
+     * Get monthly profit trend for last 6 months
+     */
+    private function getMonthlyProfitTrend($branchFilter = null)
+    {
+        $labels = [];
+        $revenueData = [];
+        $costData = [];
+        $profitData = [];
+
+        for ($i = 5; $i >= 0; $i--) {
+            $date = Carbon::now()->subMonths($i);
+            $labels[] = $date->format('M Y');
+            
+            $query = DailySalesItem::with('product')
+                ->whereHas('dailySale', function($q) use ($date, $branchFilter) {
+                    $q->whereMonth('sale_date', $date->month)
+                      ->whereYear('sale_date', $date->year)
+                      ->where('status', 'completed');
+                      
+                    if ($branchFilter) {
+                        $q->where('branch_id', $branchFilter);
+                    }
+                });
+
+            $items = $query->get();
+            $revenue = $items->sum('total');
+            $cost = $items->sum(function($item) {
+                return $item->quantity * ($item->product->cost_price ?? 0);
+            });
+            
+            $revenueData[] = round($revenue, 2);
+            $costData[] = round($cost, 2);
+            $profitData[] = round($revenue - $cost, 2);
+        }
+
+        return [
+            'labels' => $labels,
+            'revenue' => $revenueData,
+            'cost' => $costData,
+            'profit' => $profitData
+        ];
+    }
+
+    /**
+     * Get profit breakdown by category
+     */
+    private function getCategoryProfitBreakdown($startDate, $endDate, $branchFilter = null)
+    {
+        $categories = \App\Models\Category::all();
+        $data = [];
+
+        foreach ($categories as $category) {
+            $query = DailySalesItem::with('product')
+                ->whereHas('product', function($q) use ($category) {
+                    $q->where('category_id', $category->id);
+                })
+                ->whereHas('dailySale', function($q) use ($startDate, $endDate, $branchFilter) {
+                    $q->whereBetween('sale_date', [$startDate, $endDate])
+                      ->where('status', 'completed');
+                      
+                    if ($branchFilter) {
+                        $q->where('branch_id', $branchFilter);
+                    }
+                });
+
+            $items = $query->get();
+            $revenue = $items->sum('total');
+            $cost = $items->sum(function($item) {
+                return $item->quantity * ($item->product->cost_price ?? 0);
+            });
+            
+            if ($revenue > 0 || $cost > 0) {
+                $data[] = [
+                    'category' => $category->name,
+                    'revenue' => $revenue,
+                    'cost' => $cost,
+                    'profit' => $revenue - $cost,
+                    'margin' => $revenue > 0 ? (($revenue - $cost) / $revenue) * 100 : 0
+                ];
+            }
+        }
+
+        return collect($data)->sortByDesc('profit')->values();
+    }
+
+    /**
+     * Export Profit & Loss report
+     */
+    public function exportProfitLoss(Request $request)
+    {
+        $dateRange = $request->input('date_range', 'month');
+        
+        // Determine date boundaries
+        switch ($dateRange) {
+            case 'month':
+                $startDate = Carbon::now()->startOfMonth();
+                $endDate = Carbon::now()->endOfMonth();
+                break;
+            case 'quarter':
+                $startDate = Carbon::now()->startOfQuarter();
+                $endDate = Carbon::now()->endOfQuarter();
+                break;
+            case 'year':
+                $startDate = Carbon::now()->startOfYear();
+                $endDate = Carbon::now()->endOfYear();
+                break;
+            default:
+                $startDate = Carbon::now()->startOfMonth();
+                $endDate = Carbon::now()->endOfMonth();
+        }
+
+        $products = Product::all();
+        
+        $filename = 'profit-loss-report-' . Carbon::now()->format('Y-m-d') . '.csv';
+        
+        $csvContent = "\xEF\xBB\xBF"; // UTF-8 BOM
+        $csvContent .= "Product,Category,Quantity Sold,Revenue (RM),Cost (RM),Profit (RM),Margin (%)\n";
+        
+        foreach ($products as $product) {
+            $items = DailySalesItem::where('product_id', $product->id)
+                ->whereHas('dailySale', function($q) use ($startDate, $endDate) {
+                    $q->whereBetween('sale_date', [$startDate, $endDate])
+                      ->where('status', 'completed');
+                })
+                ->get();
+
+            $quantitySold = $items->sum('quantity');
+            $revenue = $items->sum('total');
+            $cost = $quantitySold * $product->cost_price;
+            $profit = $revenue - $cost;
+            $margin = $revenue > 0 ? (($revenue - $cost) / $revenue) * 100 : 0;
+
+            if ($quantitySold > 0) {
+                $csvContent .= implode(',', [
+                    '"' . str_replace('"', '""', $product->name) . '"',
+                    '"' . str_replace('"', '""', $product->category->name ?? 'N/A') . '"',
+                    $quantitySold,
+                    number_format($revenue, 2),
+                    number_format($cost, 2),
+                    number_format($profit, 2),
+                    number_format($margin, 1) . '%'
+                ]) . "\n";
+            }
+        }
+
+        return response($csvContent)
+            ->header('Content-Type', 'text/csv; charset=UTF-8')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
     }
 
     /**

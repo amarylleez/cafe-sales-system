@@ -69,9 +69,6 @@
                             <button class="btn btn-outline-secondary" onclick="resetFilter()">
                                 <i class="bi bi-arrow-clockwise"></i> Reset
                             </button>
-                            <button class="btn btn-success ms-2" onclick="exportCSV()">
-                                <i class="bi bi-file-earmark-spreadsheet"></i> Export CSV
-                            </button>
                             <button class="btn btn-danger ms-2" onclick="exportPDF()">
                                 <i class="bi bi-file-earmark-pdf"></i> Export PDF
                             </button>
@@ -222,6 +219,34 @@
 const reportModal = new bootstrap.Modal(document.getElementById('reportDetailModal'));
 let currentReportId = null;
 
+// Initialize filters from URL parameters on page load
+document.addEventListener('DOMContentLoaded', function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    
+    // Set date range
+    const dateRange = urlParams.get('date_range') || '';
+    document.getElementById('dateRange').value = dateRange;
+    
+    // Show custom date fields if custom is selected
+    if (dateRange === 'custom') {
+        document.getElementById('customDateStart').style.display = 'block';
+        document.getElementById('customDateEnd').style.display = 'block';
+        
+        const startDate = urlParams.get('start_date');
+        const endDate = urlParams.get('end_date');
+        if (startDate) document.getElementById('startDate').value = startDate;
+        if (endDate) document.getElementById('endDate').value = endDate;
+    }
+    
+    // Set branch filter
+    const branch = urlParams.get('branch') || '';
+    document.getElementById('filterBranch').value = branch;
+    
+    // Set status filter
+    const status = urlParams.get('status') || '';
+    document.getElementById('filterStatus').value = status;
+});
+
 // Date range toggle
 document.getElementById('dateRange').addEventListener('change', function() {
     const customStart = document.getElementById('customDateStart');
@@ -333,26 +358,6 @@ function printReceipt() {
     printWindow.document.write('</body></html>');
     printWindow.document.close();
     printWindow.print();
-}
-
-// Export all reports as CSV
-function exportCSV() {
-    const dateRange = document.getElementById('dateRange').value;
-    const branch = document.getElementById('filterBranch').value;
-    const status = document.getElementById('filterStatus').value;
-    
-    const params = new URLSearchParams();
-    if (dateRange) params.append('date_range', dateRange);
-    if (branch) params.append('branch', branch);
-    if (status) params.append('status', status);
-    if (dateRange === 'custom') {
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
-        if (startDate) params.append('start_date', startDate);
-        if (endDate) params.append('end_date', endDate);
-    }
-    
-    window.location.href = `/hq-admin/reports/export/csv?${params.toString()}`;
 }
 
 // Export all reports as PDF

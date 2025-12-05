@@ -26,11 +26,16 @@ class InventoryController extends Controller
         $stockQuantity = $branchStock ? $branchStock->stock_quantity : 0;
         $isAvailable = $branchStock ? $branchStock->is_available : true;
 
+        // Use received_date from branch stock, or fallback to product created_at
+        $addedDate = $branchStock && $branchStock->received_date 
+            ? $branchStock->received_date->format('d M Y')
+            : $product->created_at->format('d M Y');
+
         // Calculate sales statistics for this product (branch-specific)
         $statistics = [
             'total_sold' => $product->getTotalSold($branchId) ?? 0,
             'total_revenue' => $product->getTotalRevenue($branchId) ?? 0,
-            'added_date' => $product->created_at->format('d M Y'),
+            'added_date' => $addedDate,
             'stock_quantity' => $stockQuantity,
         ];
         

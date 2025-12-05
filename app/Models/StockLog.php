@@ -12,6 +12,7 @@ class StockLog extends Model
 
     protected $fillable = [
         'product_id',
+        'branch_id',
         'user_id',
         'quantity',
         'type',

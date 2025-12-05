@@ -11,7 +11,6 @@ use App\Models\Category;
 use App\Models\Notification;
 use App\Models\Benchmark;
 use App\Models\BranchStock;
-use App\Models\StaffSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -637,6 +636,7 @@ class StaffController extends Controller
             // Get or create branch stock
             $branchStock = BranchStock::getOrCreate($branchId, $id);
             $branchStock->stock_quantity += $request->quantity;
+            $branchStock->received_date = now(); // Update the date when stock is added
             $branchStock->save();
 
             // Log the stock addition
@@ -681,6 +681,7 @@ class StaffController extends Controller
             
             if ($request->type === 'add') {
                 $branchStock->stock_quantity += $request->quantity;
+                $branchStock->received_date = now(); // Update the date when stock is added
             } else {
                 if ($branchStock->stock_quantity < $request->quantity) {
                     return response()->json([
@@ -714,185 +715,5 @@ class StaffController extends Controller
                 'message' => 'Failed to adjust stock: ' . $e->getMessage(),
             ], 500);
         }
-    }
-
-    /**
-     * Display staff's own schedule
-     */
-    public function mySchedule(Request $request)
-    {
-        $user = auth()->user();
-        $branchId = $user->branch_id;
-        $branch = $user->branch;
-
-        // Get week offset from request (for navigation)
-        $weekOffset = (int) $request->input('week', 0);
-        $weekStart = Carbon::now()->startOfWeek()->addWeeks($weekOffset);
-        $weekEnd = $weekStart->copy()->endOfWeek();
-
-        // Get schedules for this week
-        $schedules = StaffSchedule::where('staff_id', $user->id)
-            ->whereBetween('schedule_date', [$weekStart, $weekEnd])
-            ->orderBy('schedule_date')
-            ->orderBy('start_time')
-            ->get();
-
-        // Get upcoming schedules (next 7 days)
-        $upcomingSchedules = StaffSchedule::where('staff_id', $user->id)
-            ->where('schedule_date', '>=', Carbon::today())
-            ->where('schedule_date', '<=', Carbon::today()->addDays(7))
-            ->whereIn('status', ['scheduled', 'confirmed'])
-            ->orderBy('schedule_date')
-            ->orderBy('start_time')
-            ->get();
-
-        // Get this month's total scheduled hours
-        $monthSchedules = StaffSchedule::where('staff_id', $user->id)
-            ->whereMonth('schedule_date', Carbon::now()->month)
-            ->whereYear('schedule_date', Carbon::now()->year)
-            ->whereIn('status', ['scheduled', 'confirmed', 'completed'])
-            ->get();
-
-        $totalHours = 0;
-        foreach ($monthSchedules as $schedule) {
-            $start = Carbon::parse($schedule->start_time);
-            $end = Carbon::parse($schedule->end_time);
-            $totalHours += $end->diffInHours($start);
-        }
-
-        return view('staff.my-schedule', compact(
-            'schedules',
-            'upcomingSchedules',
-            'weekStart',
-            'weekEnd',
-            'weekOffset',
-            'totalHours',
-            'branch'
-        ));
-    }
-
-    /**
-     * Confirm a schedule (staff acknowledging their shift)
-     */
-    public function confirmSchedule($id)
-    {
-        $user = auth()->user();
-
-        $schedule = StaffSchedule::where('id', $id)
-            ->where('staff_id', $user->id)
-            ->where('status', 'scheduled')
-            ->firstOrFail();
-
-        $schedule->update(['status' => 'confirmed']);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Schedule confirmed successfully.'
-        ]);
-    }
-
-    /**
-     * Clock in for a shift
-     */
-    public function clockIn($id)
-    {
-        $user = auth()->user();
-
-        $schedule = StaffSchedule::where('id', $id)
-            ->where('staff_id', $user->id)
-            ->where('status', 'confirmed')
-            ->whereNull('clock_in_time')
-            ->firstOrFail();
-
-        // Check if it's the right day
-        if (!$schedule->schedule_date->isToday()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You can only clock in on the scheduled day.'
-            ], 422);
-        }
-
-        $now = now();
-        $shiftDate = $schedule->schedule_date->format('Y-m-d');
-        $shiftStart = Carbon::parse($shiftDate . ' ' . $schedule->shift_times['start']);
-        
-        // Check if within clock-in window (2 hours before to 2 hours after shift start)
-        $windowStart = $shiftStart->copy()->subHours(2);
-        $windowEnd = $shiftStart->copy()->addHours(2);
-
-        if (!$now->between($windowStart, $windowEnd)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Clock in is available from ' . $windowStart->format('h:i A') . ' to ' . $windowEnd->format('h:i A') . '. Current time: ' . $now->format('h:i A')
-            ], 422);
-        }
-
-        // Check if late (more than 5 minutes after shift start)
-        $isLate = $now->gt($shiftStart->copy()->addMinutes(5));
-
-        $schedule->update([
-            'status' => 'clocked_in',
-            'clock_in_time' => $now,
-            'is_late' => $isLate,
-        ]);
-
-        $message = 'Clocked in successfully at ' . $now->format('h:i A');
-        if ($isLate) {
-            $message .= ' (Late arrival)';
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => $message,
-            'clock_in_time' => $now->format('h:i A'),
-            'is_late' => $isLate
-        ]);
-    }
-
-    /**
-     * Clock out from a shift
-     */
-    public function clockOut($id)
-    {
-        $user = auth()->user();
-
-        $schedule = StaffSchedule::where('id', $id)
-            ->where('staff_id', $user->id)
-            ->where('status', 'clocked_in')
-            ->whereNotNull('clock_in_time')
-            ->whereNull('clock_out_time')
-            ->firstOrFail();
-
-        $now = now();
-        $clockInTime = Carbon::parse($schedule->clock_in_time);
-        
-        // Calculate hours worked
-        $hoursWorked = round($clockInTime->diffInMinutes($now) / 60, 2);
-
-        // Check if early leave (more than 30 mins before scheduled end)
-        $shiftTimes = $schedule->shift_times;
-        $shiftDate = $schedule->schedule_date->format('Y-m-d');
-        $shiftEnd = Carbon::parse($shiftDate . ' ' . $shiftTimes['end']);
-        $isEarlyLeave = $now->lt($shiftEnd->copy()->subMinutes(30));
-
-        $schedule->update([
-            'status' => 'completed',
-            'clock_out_time' => $now,
-            'hours_worked' => $hoursWorked,
-            'is_early_leave' => $isEarlyLeave,
-        ]);
-
-        $message = 'Clocked out successfully. You worked ' . $hoursWorked . ' hours.';
-        if ($isEarlyLeave) {
-            $message .= ' (Early leave recorded)';
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => $message,
-            'clock_out_time' => $now->format('h:i A'),
-            'hours_worked' => $hoursWorked,
-            'is_early_leave' => $isEarlyLeave
-        ]);
     }
 }

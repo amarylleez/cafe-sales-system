@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\DailySale;
+use App\Models\DailySalesItem;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\User;
@@ -11,7 +12,6 @@ use App\Models\Branch;
 use App\Models\Benchmark;
 use App\Models\BranchStock;
 use App\Models\Notification;
-use App\Models\StaffSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -105,6 +105,79 @@ class BranchManagerController extends Controller
             'lowStockItems',
             'benchmark'
         ));
+    }
+
+    /**
+     * Get daily profit trend for the branch
+     */
+    private function getDailyProfitTrend($branchId, $startDate, $endDate)
+    {
+        $labels = [];
+        $revenueData = [];
+        $profitData = [];
+
+        // Limit to 30 days
+        $days = min($startDate->diffInDays($endDate), 30);
+        
+        for ($i = $days; $i >= 0; $i--) {
+            $date = $endDate->copy()->subDays($i);
+            $labels[] = $date->format('M d');
+            
+            $daySales = DailySalesItem::with('product')
+                ->whereHas('dailySale', function($q) use ($date, $branchId) {
+                    $q->whereDate('sale_date', $date)
+                      ->where('status', 'completed')
+                      ->where('branch_id', $branchId);
+                })
+                ->get();
+            
+            $revenue = $daySales->sum('total');
+            $cost = $daySales->sum(function($item) {
+                return $item->quantity * ($item->product->cost_price ?? 0);
+            });
+            
+            $revenueData[] = $revenue;
+            $profitData[] = $revenue - $cost;
+        }
+
+        return [
+            'labels' => $labels,
+            'revenue' => $revenueData,
+            'profit' => $profitData
+        ];
+    }
+
+    /**
+     * Get category profit breakdown
+     */
+    private function getCategoryProfitData($branchId, $startDate, $endDate)
+    {
+        $categoryData = DailySalesItem::with(['product.category'])
+            ->whereHas('dailySale', function($q) use ($startDate, $endDate, $branchId) {
+                $q->whereBetween('sale_date', [$startDate, $endDate])
+                  ->where('status', 'completed')
+                  ->where('branch_id', $branchId);
+            })
+            ->get()
+            ->groupBy('product.category.name');
+
+        $result = [];
+        foreach ($categoryData as $categoryName => $items) {
+            $revenue = $items->sum('total');
+            $cost = $items->sum(function($item) {
+                return $item->quantity * ($item->product->cost_price ?? 0);
+            });
+            
+            $result[] = [
+                'name' => $categoryName ?: 'Uncategorized',
+                'revenue' => $revenue,
+                'cost' => $cost,
+                'profit' => $revenue - $cost,
+                'margin' => $revenue > 0 ? (($revenue - $cost) / $revenue) * 100 : 0
+            ];
+        }
+
+        return collect($result)->sortByDesc('profit')->values();
     }
 
     /**
@@ -224,9 +297,11 @@ class BranchManagerController extends Controller
         $status = $request->input('status');
         if ($status && $status !== '') {
             if ($status === 'approved') {
-                $query->whereNotNull('verified_by');
+                $query->whereNotNull('verified_by')->where('status', '!=', 'rejected');
             } elseif ($status === 'pending') {
-                $query->whereNull('verified_by');
+                $query->whereNull('verified_by')->where('status', '!=', 'rejected');
+            } elseif ($status === 'rejected') {
+                $query->where('status', 'rejected');
             }
         }
 
@@ -243,7 +318,7 @@ class BranchManagerController extends Controller
     }
 
     /**
-     * Export sales report to Excel/CSV
+     * Export sales report to PDF
      */
     public function exportSalesReport(Request $request)
     {
@@ -251,76 +326,101 @@ class BranchManagerController extends Controller
         $branchId = $user->branch_id;
         $branch = $user->branch;
 
-        // Get all sales for this branch
-        $sales = DailySale::where('branch_id', $branchId)
-            ->with(['staff', 'items.product'])
-            ->orderBy('sale_date', 'desc')
-            ->get();
-
-        // Generate CSV
-        $filename = 'sales_report_' . $branch->name . '_' . date('Y-m-d') . '.csv';
+        // Build query with filters
+        $query = DailySale::where('branch_id', $branchId)
+            ->with(['staff', 'items.product']);
         
-        $headers = [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        // Apply date range filter
+        $dateRange = $request->input('date_range', '');
+        $dateRangeLabel = 'All Time';
+        
+        if ($dateRange && $dateRange !== '') {
+            switch ($dateRange) {
+                case 'today':
+                    $query->whereDate('sale_date', Carbon::today());
+                    $dateRangeLabel = 'Today (' . Carbon::today()->format('d M Y') . ')';
+                    break;
+                case 'week':
+                    $query->whereBetween('sale_date', [Carbon::now()->startOfWeek(), Carbon::now()->endOfWeek()]);
+                    $dateRangeLabel = 'This Week (' . Carbon::now()->startOfWeek()->format('d M') . ' - ' . Carbon::now()->endOfWeek()->format('d M Y') . ')';
+                    break;
+                case 'month':
+                    $query->whereMonth('sale_date', Carbon::now()->month)
+                          ->whereYear('sale_date', Carbon::now()->year);
+                    $dateRangeLabel = 'This Month (' . Carbon::now()->format('F Y') . ')';
+                    break;
+                case 'custom':
+                    $startDate = $request->input('start_date');
+                    $endDate = $request->input('end_date');
+                    if ($startDate && $endDate) {
+                        $query->whereBetween('sale_date', [$startDate, $endDate]);
+                        $dateRangeLabel = Carbon::parse($startDate)->format('d M Y') . ' - ' . Carbon::parse($endDate)->format('d M Y');
+                    }
+                    break;
+            }
+        }
+        
+        // Apply status filter
+        $status = $request->input('status', '');
+        if ($status && $status !== '') {
+            $query->where('status', $status);
+        }
+        
+        $sales = $query->orderBy('sale_date', 'desc')->get();
+
+        // Calculate summary
+        $summary = [
+            'totalSales' => $sales->sum('total_amount'),
+            'totalTransactions' => $sales->count(),
+            'completedCount' => $sales->where('status', 'completed')->count(),
+            'pendingCount' => $sales->where('status', 'pending')->count(),
+            'rejectedCount' => $sales->where('status', 'rejected')->count(),
+            'dateRangeLabel' => $dateRangeLabel,
         ];
 
-        $callback = function() use ($sales) {
-            $file = fopen('php://output', 'w');
-            
-            // Add BOM for Excel UTF-8 compatibility
-            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-            
-            // CSV Header
-            fputcsv($file, [
-                'Transaction ID',
-                'Date',
-                'Staff',
-                'Items',
-                'Total Amount (RM)',
-                'Payment Method',
-                'Status',
-                'Verified By',
-                'Notes'
-            ]);
-
-            // CSV Data
-            foreach ($sales as $sale) {
-                $itemsList = $sale->items->map(function($item) {
-                    return $item->product->name . ' x' . $item->quantity;
-                })->implode('; '); // Use semicolon to avoid CSV comma issues
-
-                // Format date as plain text for Excel
-                $dateFormatted = \Carbon\Carbon::parse($sale->sale_date)->format('d M Y');
-
-                fputcsv($file, [
-                    $sale->transaction_id,
-                    $dateFormatted,
-                    $sale->staff->name ?? 'N/A',
-                    $itemsList,
-                    number_format($sale->total_amount, 2, '.', ''), // Format without thousand separator
-                    ucfirst(str_replace('_', ' ', $sale->payment_method)),
-                    ucfirst($sale->status),
-                    $sale->verifier->name ?? 'Pending',
-                    $sale->notes ?? ''
-                ]);
-            }
-
-            fclose($file);
-        };
-
-        return response()->stream($callback, 200, $headers);
+        $pdf = \PDF::loadView('branch-manager.pdf.sales-report', compact('sales', 'branch', 'summary'));
+        
+        return $pdf->download('sales_report_' . $branch->name . '_' . date('Y-m-d') . '.pdf');
     }
 
     /**
-     * Show KPI & Benchmark page
+     * Show Performance page (combines KPI Benchmark + Profit/Loss)
      */
-    public function kpiBenchmark()
+    public function performance(Request $request)
     {
         $user = auth()->user();
         $branchId = $user->branch_id;
         $branch = $user->branch;
         $currentMonth = Carbon::now();
+
+        // Date range handling for profit/loss
+        $dateRange = $request->get('range', 'this_month');
+        
+        switch ($dateRange) {
+            case 'today':
+                $startDate = Carbon::today();
+                $endDate = Carbon::today();
+                break;
+            case 'this_week':
+                $startDate = Carbon::now()->startOfWeek();
+                $endDate = Carbon::now()->endOfWeek();
+                break;
+            case 'last_week':
+                $startDate = Carbon::now()->subWeek()->startOfWeek();
+                $endDate = Carbon::now()->subWeek()->endOfWeek();
+                break;
+            case 'this_month':
+                $startDate = Carbon::now()->startOfMonth();
+                $endDate = Carbon::now()->endOfMonth();
+                break;
+            case 'last_month':
+                $startDate = Carbon::now()->subMonth()->startOfMonth();
+                $endDate = Carbon::now()->subMonth()->endOfMonth();
+                break;
+            default:
+                $startDate = Carbon::now()->startOfMonth();
+                $endDate = Carbon::now()->endOfMonth();
+        }
 
         // Get active benchmarks set by HQ Admin
         $benchmark = Benchmark::where('is_active', true)->first();
@@ -379,15 +479,239 @@ class BranchManagerController extends Controller
         // Monthly sales comparison (last 6 months)
         $monthlySalesData = $this->getMonthlySalesComparison($branchId);
 
-        return view('branch-manager.kpi-benchmark', compact(
+        // === PROFIT/LOSS CALCULATIONS ===
+        
+        // Get all sales items for profit calculation
+        $salesItems = DailySalesItem::with(['product', 'dailySale'])
+            ->whereHas('dailySale', function($q) use ($startDate, $endDate, $branchId) {
+                $q->whereBetween('sale_date', [$startDate, $endDate])
+                  ->where('status', 'completed')
+                  ->where('branch_id', $branchId);
+            })
+            ->get();
+
+        // Calculate totals
+        $totalRevenue = $salesItems->sum('total');
+        $totalCost = $salesItems->sum(function($item) {
+            return $item->quantity * ($item->product->cost_price ?? 0);
+        });
+
+        // Product-wise profit breakdown
+        $productProfitData = [];
+        foreach ($salesItems as $item) {
+            $productId = $item->product_id;
+            if (!isset($productProfitData[$productId])) {
+                $productProfitData[$productId] = [
+                    'product' => $item->product,
+                    'quantity_sold' => 0,
+                    'revenue' => 0,
+                    'cost' => 0,
+                    'profit' => 0
+                ];
+            }
+            $revenue = $item->total;
+            $cost = $item->quantity * ($item->product->cost_price ?? 0);
+            $productProfitData[$productId]['quantity_sold'] += $item->quantity;
+            $productProfitData[$productId]['revenue'] += $revenue;
+            $productProfitData[$productId]['cost'] += $cost;
+            $productProfitData[$productId]['profit'] += ($revenue - $cost);
+        }
+
+        $grossProfit = $totalRevenue - $totalCost;
+        $profitMargin = $totalRevenue > 0 ? ($grossProfit / $totalRevenue) * 100 : 0;
+
+        // Sort products by profit (descending)
+        $productProfitData = collect($productProfitData)->sortByDesc('profit')->values();
+        
+        // Top 5 profitable products
+        $topProfitableProducts = $productProfitData->take(5);
+
+        // Calculate stock loss from unsold items
+        $unsoldStock = BranchStock::with('product')
+            ->where('branch_id', $branchId)
+            ->where('stock_quantity', '>', 0)
+            ->whereNotNull('received_date')
+            ->where('received_date', '<', Carbon::today())
+            ->get();
+            
+        $unsoldStockLoss = $unsoldStock->sum(function($stock) {
+            return $stock->stock_quantity * ($stock->cost_at_purchase ?? $stock->product->cost_price ?? 0);
+        });
+
+        // Calculate loss from rejected transactions
+        $rejectedItems = DailySalesItem::with(['product', 'dailySale'])
+            ->whereHas('dailySale', function($q) use ($startDate, $endDate, $branchId) {
+                $q->whereBetween('sale_date', [$startDate, $endDate])
+                  ->where('status', 'rejected')
+                  ->where('branch_id', $branchId);
+            })
+            ->get();
+        
+        $rejectedSalesLoss = $rejectedItems->sum(function($item) {
+            return $item->quantity * ($item->product->cost_price ?? 0);
+        });
+
+        // Total stock loss
+        $stockLoss = $unsoldStockLoss + $rejectedSalesLoss;
+
+        // Get potential loss stock for warning display
+        $potentialLossStock = BranchStock::with(['product'])
+            ->where('branch_id', $branchId)
+            ->where('stock_quantity', '>', 0)
+            ->whereNotNull('received_date')
+            ->where('received_date', '<', Carbon::today())
+            ->orderBy('received_date', 'asc')
+            ->get();
+
+        // Get rejected sales for display
+        $rejectedSales = DailySale::with(['items.product', 'staff'])
+            ->where('branch_id', $branchId)
+            ->whereBetween('sale_date', [$startDate, $endDate])
+            ->where('status', 'rejected')
+            ->orderBy('sale_date', 'desc')
+            ->get();
+
+        // Net profit (after stock loss)
+        $netProfit = $grossProfit - $stockLoss;
+
+        // Daily profit trend
+        $dailyProfitTrend = $this->getDailyProfitTrend($branchId, $startDate, $endDate);
+
+        // Detailed daily profit/loss breakdown
+        $dailyBreakdown = $this->getDailyProfitBreakdown($branchId, $startDate, $endDate);
+        
+        // Transform to expected structure for the view
+        $dailyProfitLossBreakdown = [
+            'days' => $dailyBreakdown['days'],
+            'monthly_totals' => [
+                'totalRevenue' => $dailyBreakdown['totals']['revenue'],
+                'totalCost' => $dailyBreakdown['totals']['cost'],
+                'totalGrossProfit' => $dailyBreakdown['totals']['gross_profit'],
+                'totalRejectedLoss' => $dailyBreakdown['totals']['rejected_loss'],
+                'totalNetProfit' => $dailyBreakdown['totals']['net_profit'],
+            ]
+        ];
+
+        return view('branch-manager.performance', compact(
+            // Benchmark data
             'kpis', 
             'staffKpis', 
             'monthlySalesData', 
             'benchmark',
             'branch',
             'branchMonthlySales',
-            'branchTransactionCount'
+            'branchTransactionCount',
+            // Profit/Loss data
+            'totalRevenue',
+            'totalCost',
+            'grossProfit',
+            'netProfit',
+            'profitMargin',
+            'stockLoss',
+            'unsoldStockLoss',
+            'rejectedSalesLoss',
+            'potentialLossStock',
+            'rejectedSales',
+            'topProfitableProducts',
+            'dailyProfitTrend',
+            'dailyBreakdown',
+            'dailyProfitLossBreakdown',
+            'startDate',
+            'endDate',
+            'dateRange'
         ));
+    }
+
+    /**
+     * Get detailed daily profit/loss breakdown
+     */
+    private function getDailyProfitBreakdown($branchId, $startDate, $endDate)
+    {
+        $breakdown = [];
+        $totalRevenue = 0;
+        $totalCost = 0;
+        $totalProfit = 0;
+        $totalRejectedLoss = 0;
+
+        // Iterate through each day in the range
+        $currentDate = $startDate->copy();
+        while ($currentDate <= $endDate) {
+            $date = $currentDate->copy();
+            
+            // Get completed sales for this day
+            $daySales = DailySalesItem::with('product')
+                ->whereHas('dailySale', function($q) use ($date, $branchId) {
+                    $q->whereDate('sale_date', $date)
+                      ->where('status', 'completed')
+                      ->where('branch_id', $branchId);
+                })
+                ->get();
+            
+            $dayRevenue = $daySales->sum('total');
+            $dayCost = $daySales->sum(function($item) {
+                return $item->quantity * ($item->product->cost_price ?? 0);
+            });
+            $dayProfit = $dayRevenue - $dayCost;
+            
+            // Get rejected sales loss for this day
+            $rejectedItems = DailySalesItem::with('product')
+                ->whereHas('dailySale', function($q) use ($date, $branchId) {
+                    $q->whereDate('sale_date', $date)
+                      ->where('status', 'rejected')
+                      ->where('branch_id', $branchId);
+                })
+                ->get();
+            
+            $dayRejectedLoss = $rejectedItems->sum(function($item) {
+                return $item->quantity * ($item->product->cost_price ?? 0);
+            });
+            
+            // Get transaction count
+            $transactionCount = DailySale::where('branch_id', $branchId)
+                ->whereDate('sale_date', $date)
+                ->where('status', 'completed')
+                ->count();
+            
+            $dayNetProfit = $dayProfit - $dayRejectedLoss;
+            
+            // Only add days with activity (completed sales or rejected transactions)
+            if ($dayRevenue > 0 || $dayRejectedLoss > 0) {
+                // Use date string as key for the view to iterate properly
+                $dateKey = $date->format('Y-m-d');
+                $breakdown[$dateKey] = [
+                    'date' => $dateKey,
+                    'dateFormatted' => $date->format('D, M d'),
+                    'revenue' => $dayRevenue,
+                    'cost' => $dayCost,
+                    'grossProfit' => $dayProfit,
+                    'rejectedLoss' => $dayRejectedLoss,
+                    'netProfit' => $dayNetProfit,
+                    'transactions' => $transactionCount,
+                    'margin' => $dayRevenue > 0 ? ($dayProfit / $dayRevenue) * 100 : 0
+                ];
+            }
+            
+            $totalRevenue += $dayRevenue;
+            $totalCost += $dayCost;
+            $totalProfit += $dayProfit;
+            $totalRejectedLoss += $dayRejectedLoss;
+            
+            $currentDate->addDay();
+        }
+
+        // Sort by date descending and keep as associative array
+        krsort($breakdown);
+
+        return [
+            'days' => $breakdown,
+            'totals' => [
+                'revenue' => $totalRevenue,
+                'cost' => $totalCost,
+                'gross_profit' => $totalProfit,
+                'rejected_loss' => $totalRejectedLoss,
+                'net_profit' => $totalProfit - $totalRejectedLoss
+            ]
+        ];
     }
 
     /**
@@ -433,18 +757,7 @@ class BranchManagerController extends Controller
             ->where('id', '!=', $user->id)
             ->get();
 
-        // Get week offset for schedule navigation
-        $weekOffset = $request->get('week', 0);
-        $weekStart = Carbon::now()->startOfWeek()->addWeeks($weekOffset);
-        $weekEnd = $weekStart->copy()->endOfWeek();
-
-        // Get schedules for the week
-        $schedules = StaffSchedule::with('staff')
-            ->where('branch_id', $branchId)
-            ->whereBetween('schedule_date', [$weekStart, $weekEnd])
-            ->get();
-
-        return view('branch-manager.team-overview', compact('branchManager', 'staffMembers', 'weekStart', 'weekEnd', 'weekOffset', 'schedules'));
+        return view('branch-manager.team-overview', compact('branchManager', 'staffMembers'));
     }
 
     /**
@@ -587,6 +900,40 @@ class BranchManagerController extends Controller
     }
 
     /**
+     * Reject report - rejects the transaction with a reason
+     */
+    public function rejectReport(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'reason' => 'required|string|max:500'
+            ]);
+
+            $report = DailySale::findOrFail($id);
+            $report->status = 'rejected';
+            $report->notes = ($report->notes ? $report->notes . "\n\n" : '') . 
+                             "[REJECTED by " . auth()->user()->name . " on " . now()->format('d M Y H:i') . "]\n" .
+                             "Reason: " . $request->reason;
+            $report->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Transaction rejected successfully'
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed: ' . implode(', ', $e->validator->errors()->all())
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to reject transaction: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Update report details
      */
     public function updateReport(Request $request, $id)
@@ -600,6 +947,9 @@ class BranchManagerController extends Controller
             }
             if ($request->has('payment_method')) {
                 $report->payment_method = $request->payment_method;
+            }
+            if ($request->has('payment_details')) {
+                $report->payment_details = $request->payment_details;
             }
             if ($request->has('notes')) {
                 $report->notes = $request->notes;
@@ -782,189 +1132,5 @@ class BranchManagerController extends Controller
         $notification->update(['is_read' => true]);
 
         return response()->json(['success' => true]);
-    }
-
-    /**
-     * Display staff schedule page
-     */
-    public function staffSchedule(Request $request)
-    {
-        $user = auth()->user();
-        $branchId = $user->branch_id;
-        $branch = $user->branch;
-
-        // Get staff members for this branch
-        $staffMembers = User::where('branch_id', $branchId)
-            ->where('role', 'staff')
-            ->orderBy('name')
-            ->get();
-
-        // Get week offset from request (for navigation)
-        $weekOffset = (int) $request->input('week', 0);
-        $weekStart = Carbon::now()->startOfWeek()->addWeeks($weekOffset);
-        $weekEnd = $weekStart->copy()->endOfWeek();
-
-        // Get schedules for this week
-        $schedules = StaffSchedule::where('branch_id', $branchId)
-            ->whereBetween('schedule_date', [$weekStart, $weekEnd])
-            ->with('staff')
-            ->orderBy('schedule_date')
-            ->orderBy('start_time')
-            ->get();
-
-        // Group schedules by date and staff
-        $schedulesByDate = [];
-        for ($date = $weekStart->copy(); $date <= $weekEnd; $date->addDay()) {
-            $dateKey = $date->format('Y-m-d');
-            $schedulesByDate[$dateKey] = $schedules->where('schedule_date', $date->format('Y-m-d'));
-        }
-
-        return view('branch-manager.staff-schedule', compact(
-            'staffMembers', 
-            'schedules', 
-            'schedulesByDate',
-            'weekStart', 
-            'weekEnd', 
-            'weekOffset',
-            'branch'
-        ));
-    }
-
-    /**
-     * Store a new staff schedule
-     */
-    public function storeSchedule(Request $request)
-    {
-        $request->validate([
-            'staff_id' => 'required|exists:users,id',
-            'schedule_date' => 'required|date',
-            'shift_type' => 'required|in:morning,afternoon,evening,full_day',
-            'notes' => 'nullable|string|max:500',
-        ]);
-
-        $user = auth()->user();
-        $branchId = $user->branch_id;
-
-        // Define shift times
-        $shiftTimes = [
-            'morning' => ['start' => '06:00', 'end' => '14:00'],
-            'afternoon' => ['start' => '14:00', 'end' => '22:00'],
-            'evening' => ['start' => '18:00', 'end' => '00:00'],
-            'full_day' => ['start' => '09:00', 'end' => '18:00'],
-        ];
-
-        $startTime = $shiftTimes[$request->shift_type]['start'];
-        $endTime = $shiftTimes[$request->shift_type]['end'];
-
-        // Verify the staff belongs to this branch
-        $staff = User::where('id', $request->staff_id)
-            ->where('branch_id', $branchId)
-            ->where('role', 'staff')
-            ->firstOrFail();
-
-        // Check for existing schedule on the same day (one shift per day)
-        $existingSchedule = StaffSchedule::where('staff_id', $request->staff_id)
-            ->where('schedule_date', $request->schedule_date)
-            ->where('status', '!=', 'cancelled')
-            ->exists();
-
-        if ($existingSchedule) {
-            return response()->json([
-                'success' => false,
-                'message' => 'This staff already has a schedule for this date.'
-            ], 422);
-        }
-
-        $schedule = StaffSchedule::create([
-            'staff_id' => $request->staff_id,
-            'branch_id' => $branchId,
-            'created_by' => $user->id,
-            'schedule_date' => $request->schedule_date,
-            'start_time' => $startTime,
-            'end_time' => $endTime,
-            'shift_type' => $request->shift_type,
-            'status' => 'scheduled',
-            'notes' => $request->notes,
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Schedule created successfully.',
-            'schedule' => $schedule->load('staff')
-        ]);
-    }
-
-    /**
-     * Get staff schedule for modal
-     */
-    public function getStaffSchedule($staffId, Request $request)
-    {
-        $user = auth()->user();
-        $branchId = $user->branch_id;
-
-        // Verify staff belongs to this branch
-        $staff = User::where('id', $staffId)
-            ->where('branch_id', $branchId)
-            ->firstOrFail();
-
-        // Get schedules for current and next 2 weeks
-        $startDate = Carbon::now()->startOfWeek();
-        $endDate = Carbon::now()->addWeeks(2)->endOfWeek();
-
-        $schedules = StaffSchedule::where('staff_id', $staffId)
-            ->whereBetween('schedule_date', [$startDate, $endDate])
-            ->orderBy('schedule_date')
-            ->orderBy('start_time')
-            ->get();
-
-        return response()->json([
-            'success' => true,
-            'staff' => $staff,
-            'schedules' => $schedules
-        ]);
-    }
-
-    /**
-     * Update schedule status
-     */
-    public function updateScheduleStatus(Request $request, $id)
-    {
-        $request->validate([
-            'status' => 'required|in:scheduled,confirmed,clocked_in,completed,absent,cancelled'
-        ]);
-
-        $user = auth()->user();
-        $branchId = $user->branch_id;
-
-        $schedule = StaffSchedule::where('id', $id)
-            ->where('branch_id', $branchId)
-            ->firstOrFail();
-
-        $schedule->update(['status' => $request->status]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Schedule status updated successfully.'
-        ]);
-    }
-
-    /**
-     * Delete a schedule
-     */
-    public function deleteSchedule($id)
-    {
-        $user = auth()->user();
-        $branchId = $user->branch_id;
-
-        $schedule = StaffSchedule::where('id', $id)
-            ->where('branch_id', $branchId)
-            ->firstOrFail();
-
-        $schedule->delete();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Schedule deleted successfully.'
-        ]);
     }
 }
