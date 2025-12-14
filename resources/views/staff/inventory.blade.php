@@ -24,17 +24,22 @@
                         <h5 class="mb-0">
                             <i class="bi bi-box-seam"></i> Update Sales Item Records
                         </h5>
-                        <form action="{{ route('staff.inventory') }}" method="GET" style="max-width: 400px;">
-                            @if($selectedCategory)
-                            <input type="hidden" name="category" value="{{ $selectedCategory }}">
-                            @endif
-                            <div class="input-group">
-                                <input type="text" class="form-control" name="search" placeholder="Search products..." value="{{ request('search') }}">
-                                <button class="btn btn-light" type="submit">
-                                    <i class="bi bi-search"></i>
-                                </button>
-                            </div>
-                        </form>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-light btn-sm" id="bulkRestockBtn">
+                                <i class="bi bi-box-arrow-in-down"></i> Bulk Restock
+                            </button>
+                            <form action="{{ route('staff.inventory') }}" method="GET" style="max-width: 400px;">
+                                @if($selectedCategory)
+                                <input type="hidden" name="category" value="{{ $selectedCategory }}">
+                                @endif
+                                <div class="input-group">
+                                    <input type="text" class="form-control" name="search" placeholder="Search products..." value="{{ request('search') }}">
+                                    <button class="btn btn-light" type="submit">
+                                        <i class="bi bi-search"></i>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 </div>
                 <div class="card-body">
@@ -160,12 +165,72 @@
     </div>
 </div>
 
+<!-- Bulk Restock Modal -->
+<div class="modal fade" id="bulkRestockModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-box-arrow-in-down"></i> Bulk Restock All Products</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> Update stock quantities for all products at once. Leave blank to keep current stock.
+                </div>
+                <div class="mb-3">
+                    <input type="text" class="form-control" id="bulkSearchProduct" placeholder="Search products...">
+                </div>
+                <div style="max-height: 400px; overflow-y: auto;" id="bulkRestockList">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="text-muted mt-2">Loading products...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" id="confirmBulkRestockBtn">
+                    <i class="bi bi-check-circle"></i> Update All Stock
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
+<!-- Restock Success Modal -->
+<div class="modal fade" id="restockSuccessModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-body text-center p-5">
+                <div class="mb-4">
+                    <div class="success-checkmark mx-auto mb-3">
+                        <i class="bi bi-check-circle-fill text-success" style="font-size: 5rem;"></i>
+                    </div>
+                    <h3 class="text-success mb-3">Stock Updated Successfully!</h3>
+                    <div class="alert alert-light border">
+                        <strong>Products Updated:</strong>
+                        <div class="mt-2">
+                            <span id="updatedProductCount" class="fs-4 text-primary fw-bold"></span>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0">The inventory has been updated with the new stock quantities.</p>
+                </div>
+                <button type="button" class="btn btn-primary btn-lg px-5" id="restockSuccessOk">
+                    <i class="bi bi-check-circle"></i> OK
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const productDetailsModal = new bootstrap.Modal(document.getElementById('productDetailsModal'));
+    const bulkRestockModal = new bootstrap.Modal(document.getElementById('bulkRestockModal'));
+    const restockSuccessModal = new bootstrap.Modal(document.getElementById('restockSuccessModal'));
 
     // Toggle availability
     document.querySelectorAll('.availability-toggle').forEach(toggle => {
@@ -372,6 +437,163 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.disabled = false;
         });
     }
+    
+    // Bulk restock button click
+    document.getElementById('bulkRestockBtn').addEventListener('click', function() {
+        bulkRestockModal.show();
+        loadAllProducts();
+    });
+    
+    // Load all products for bulk restock
+    function loadAllProducts() {
+        const listContainer = document.getElementById('bulkRestockList');
+        listContainer.innerHTML = `
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="text-muted mt-2">Loading all products...</p>
+            </div>
+        `;
+        
+        fetch('/staff/inventory/all-products', {
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.products.length > 0) {
+                let html = '';
+                data.products.forEach(product => {
+                    const stockBadgeClass = product.stock_quantity > 10 ? 'info' : (product.stock_quantity > 0 ? 'warning' : 'danger');
+                    html += `
+                        <div class="card mb-2 bulk-product-item" data-product-name="${product.name.toLowerCase()}">
+                            <div class="card-body py-2">
+                                <div class="row align-items-center">
+                                    <div class="col-md-5">
+                                        <strong>${product.name}</strong>
+                                        <br><small class="text-muted">${product.category.name}</small>
+                                    </div>
+                                    <div class="col-md-3 text-center">
+                                        <small class="text-muted">Current Stock</small>
+                                        <br><span class="badge bg-${stockBadgeClass}">${product.stock_quantity} units</span>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small mb-1">Add Quantity</label>
+                                        <input type="number" class="form-control form-control-sm bulk-quantity-input" 
+                                               data-product-id="${product.id}" 
+                                               data-product-name="${product.name}"
+                                               min="0" placeholder="0">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                listContainer.innerHTML = html;
+            } else {
+                listContainer.innerHTML = '<div class="alert alert-warning">No products found</div>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading products:', error);
+            listContainer.innerHTML = '<div class="alert alert-danger">Failed to load products</div>';
+        });
+    }
+    
+    // Search products in bulk restock modal
+    document.getElementById('bulkSearchProduct').addEventListener('input', function() {
+        const query = this.value.toLowerCase();
+        document.querySelectorAll('.bulk-product-item').forEach(item => {
+            const productName = item.dataset.productName;
+            item.style.display = productName.includes(query) ? '' : 'none';
+        });
+    });
+    
+    // Confirm bulk restock
+    document.getElementById('confirmBulkRestockBtn').addEventListener('click', function() {
+        const updates = [];
+        document.querySelectorAll('.bulk-quantity-input').forEach(input => {
+            const quantity = parseInt(input.value);
+            if (quantity && quantity > 0) {
+                updates.push({
+                    product_id: input.dataset.productId,
+                    product_name: input.dataset.productName,
+                    quantity: quantity
+                });
+            }
+        });
+        
+        if (updates.length === 0) {
+            alert('Please enter quantities for at least one product');
+            return;
+        }
+        
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+        
+        // Process each update sequentially
+        let completed = 0;
+        const processUpdate = (index) => {
+            if (index >= updates.length) {
+                // All done
+                bulkRestockModal.hide();
+                
+                // Show success modal
+                document.getElementById('updatedProductCount').textContent = completed + ' product(s)';
+                restockSuccessModal.show();
+                
+                // Reload when OK is clicked
+                document.getElementById('restockSuccessOk').addEventListener('click', function() {
+                    location.reload();
+                }, { once: true });
+                
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-check-circle"></i> Update All Stock';
+                return;
+            }
+            
+            const update = updates[index];
+            fetch(`/staff/stock/${update.product_id}/adjust`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({ 
+                    quantity: update.quantity, 
+                    type: 'add',
+                    notes: 'Bulk restock from inventory page'
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    completed++;
+                    // Update the card on the main page
+                    const card = document.querySelector(`[data-product-id="${update.product_id}"]`)?.closest('.card');
+                    if (card) {
+                        const stockBadge = card.querySelector('.badge.bg-info, .badge.bg-warning, .badge.bg-danger');
+                        if (stockBadge && stockBadge.textContent.includes('units')) {
+                            stockBadge.textContent = data.new_quantity + ' units';
+                            stockBadge.className = 'badge bg-' + (data.new_quantity > 10 ? 'info' : (data.new_quantity > 0 ? 'warning' : 'danger'));
+                        }
+                    }
+                }
+                processUpdate(index + 1);
+            })
+            .catch(error => {
+                console.error('Error updating product:', update.product_name, error);
+                processUpdate(index + 1);
+            });
+        };
+        
+        processUpdate(0);
+    });
 });
 </script>
 @endpush

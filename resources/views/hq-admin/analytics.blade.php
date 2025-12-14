@@ -210,6 +210,90 @@
         </div>
     </div>
 
+    <!-- Stock Loss Visualizations -->
+    <div class="row mb-4">
+        <!-- Stock Loss Trend (30 Days) -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-graph-down text-danger"></i> Stock Loss Trend (Last 30 Days)</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="stockLossTrendChart" height="100"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Stock Loss Breakdown Pie Chart -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-pie-chart-fill text-danger"></i> Loss Breakdown</h5>
+                </div>
+                <div class="card-body d-flex flex-column">
+                    <div class="flex-grow-1" style="position: relative; min-height: 200px;">
+                        <canvas id="stockLossBreakdownChart"></canvas>
+                    </div>
+                    <div class="mt-3 pt-3 border-top">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-warning text-dark me-2" style="width: 12px; height: 12px;"></span>
+                                <span>Unsold Stock</span>
+                            </div>
+                            <strong class="text-warning">RM {{ number_format($unsoldStockLoss, 2) }}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-danger me-2" style="width: 12px; height: 12px;"></span>
+                                <span>Rejected Sales</span>
+                            </div>
+                            <strong class="text-danger">RM {{ number_format($rejectedSalesLoss, 2) }}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stock Loss by Category & Branch -->
+    <div class="row mb-4">
+        <!-- Loss by Category -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-tags-fill text-danger"></i> Stock Loss by Category</h5>
+                </div>
+                <div class="card-body">
+                    @if($stockLossByCategory->count() > 0)
+                    <canvas id="stockLossByCategoryChart" height="150"></canvas>
+                    @else
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle"></i> No stock loss data available for categories.
+                    </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+
+        <!-- Loss by Branch -->
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white">
+                    <h5 class="mb-0"><i class="bi bi-building text-danger"></i> Stock Loss by Branch</h5>
+                </div>
+                <div class="card-body">
+                    @if($stockLossByBranch->count() > 0)
+                    <canvas id="stockLossByBranchChart" height="150"></canvas>
+                    @else
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle"></i> No stock loss data available for branches.
+                    </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Stock Loss Warning -->
     @if($potentialLossStock->count() > 0)
     <div class="row mb-4">
@@ -576,6 +660,246 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+
+    // Stock Loss Trend Chart (30 days)
+    const stockLossTrend = @json($stockLossTrend);
+    const stockLossTrendCtx = document.getElementById('stockLossTrendChart');
+    
+    new Chart(stockLossTrendCtx, {
+        type: 'line',
+        data: {
+            labels: stockLossTrend.labels,
+            datasets: [
+                {
+                    label: 'Unsold Stock Loss',
+                    data: stockLossTrend.unsold,
+                    borderColor: '#ffc107',
+                    backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 2
+                },
+                {
+                    label: 'Rejected Sales Loss',
+                    data: stockLossTrend.rejected,
+                    borderColor: '#dc3545',
+                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                    tension: 0.4,
+                    fill: true,
+                    borderWidth: 2
+                },
+                {
+                    label: 'Total Loss',
+                    data: stockLossTrend.total,
+                    borderColor: '#6c757d',
+                    backgroundColor: 'rgba(108, 117, 125, 0.1)',
+                    tension: 0.4,
+                    fill: false,
+                    borderWidth: 3,
+                    borderDash: [5, 5]
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': RM ' + context.parsed.y.toFixed(2);
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'RM ' + value.toFixed(0);
+                        }
+                    }
+                },
+                x: {
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                }
+            }
+        }
+    });
+
+    // Stock Loss Breakdown Pie Chart
+    const unsoldLoss = {{ $unsoldStockLoss }};
+    const rejectedLoss = {{ $rejectedSalesLoss }};
+    const stockLossBreakdownCtx = document.getElementById('stockLossBreakdownChart');
+    
+    new Chart(stockLossBreakdownCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Unsold Stock', 'Rejected Sales'],
+            datasets: [{
+                data: [unsoldLoss, rejectedLoss],
+                backgroundColor: [
+                    'rgba(255, 193, 7, 0.8)',
+                    'rgba(220, 53, 69, 0.8)'
+                ],
+                borderColor: [
+                    '#ffc107',
+                    '#dc3545'
+                ],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = unsoldLoss + rejectedLoss;
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return label + ': RM ' + value.toFixed(2) + ' (' + percentage + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Stock Loss by Category Chart
+    @if($stockLossByCategory->count() > 0)
+    const stockLossByCategory = @json($stockLossByCategory);
+    const categoryCtx = document.getElementById('stockLossByCategoryChart');
+    
+    new Chart(categoryCtx, {
+        type: 'bar',
+        data: {
+            labels: stockLossByCategory.map(c => c.category),
+            datasets: [
+                {
+                    label: 'Unsold',
+                    data: stockLossByCategory.map(c => c.unsold),
+                    backgroundColor: 'rgba(255, 193, 7, 0.7)',
+                    borderColor: '#ffc107',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Rejected',
+                    data: stockLossByCategory.map(c => c.rejected),
+                    backgroundColor: 'rgba(220, 53, 69, 0.7)',
+                    borderColor: '#dc3545',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': RM ' + context.parsed.y.toFixed(2);
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    stacked: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'RM ' + value.toFixed(0);
+                        }
+                    }
+                },
+                x: {
+                    stacked: true
+                }
+            }
+        }
+    });
+    @endif
+
+    // Stock Loss by Branch Chart
+    @if($stockLossByBranch->count() > 0)
+    const stockLossByBranch = @json($stockLossByBranch);
+    const branchLossCtx = document.getElementById('stockLossByBranchChart');
+    
+    new Chart(branchLossCtx, {
+        type: 'bar',
+        data: {
+            labels: stockLossByBranch.map(b => b.branch),
+            datasets: [
+                {
+                    label: 'Unsold',
+                    data: stockLossByBranch.map(b => b.unsold),
+                    backgroundColor: 'rgba(255, 193, 7, 0.7)',
+                    borderColor: '#ffc107',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Rejected',
+                    data: stockLossByBranch.map(b => b.rejected),
+                    backgroundColor: 'rgba(220, 53, 69, 0.7)',
+                    borderColor: '#dc3545',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': RM ' + context.parsed.y.toFixed(2);
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    stacked: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'RM ' + value.toFixed(0);
+                        }
+                    }
+                },
+                x: {
+                    stacked: true
+                }
+            }
+        }
+    });
+    @endif
 });
 </script>
 @endpush

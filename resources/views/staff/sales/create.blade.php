@@ -102,6 +102,32 @@
     </div>
 </div>
 
+<!-- Success Modal -->
+<div class="modal fade" id="successModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-body text-center p-5">
+                <div class="mb-4">
+                    <div class="success-checkmark mx-auto mb-3">
+                        <i class="bi bi-check-circle-fill text-success" style="font-size: 5rem;"></i>
+                    </div>
+                    <h3 class="text-success mb-3">Sale Recorded Successfully!</h3>
+                    <div class="alert alert-light border">
+                        <strong>Transaction ID:</strong>
+                        <div class="mt-2">
+                            <code id="transactionId" class="fs-5 text-primary"></code>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0">The sale has been recorded and stock has been updated.</p>
+                </div>
+                <button type="button" class="btn btn-primary btn-lg px-5" id="successModalOk">
+                    <i class="bi bi-arrow-left-circle"></i> Back to Dashboard
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Item Row Template -->
 <template id="itemRowTemplate">
     <div class="card mb-2 item-row">
@@ -113,15 +139,17 @@
                         <i class="bi bi-trash"></i>
                     </button>
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-4">
                     <label class="form-label small mb-1">Product <span class="text-danger">*</span></label>
-                    <select class="form-select form-select-sm product-select" name="items[INDEX][product_id]" required>
+                    <select class="form-select form-select-sm product-select" name="items[INDEX][product_id]" required style="height: auto; padding: 0.375rem 2.25rem 0.375rem 0.75rem;">
                         <option value="">Select Product</option>
                         @foreach($products as $product)
                         <option value="{{ $product->id }}" 
                                 data-price="{{ $product->price }}"
-                                data-stock="{{ $product->stock_quantity }}">
-                            {{ $product->name }} ({{ $product->category->name }}) - RM {{ number_format($product->price, 2) }}
+                                data-stock="{{ $product->stock_quantity }}"
+                                data-category="{{ $product->category->name }}"
+                                style="padding: 8px; line-height: 1.6;">
+                            {{ $product->name }} | {{ $product->category->name }} | RM {{ number_format($product->price, 2) }}
                         </option>
                         @endforeach
                     </select>
@@ -132,7 +160,7 @@
                         <span class="badge bg-secondary">-</span>
                     </div>
                 </div>
-                <div class="col-md-2">
+                <div class="col-md-1">
                     <label class="form-label small mb-1">Qty <span class="text-danger">*</span></label>
                     <input type="number" class="form-control form-control-sm quantity-input" name="items[INDEX][quantity]" 
                            min="1" value="1" required>
@@ -192,16 +220,21 @@ document.addEventListener('DOMContentLoaded', function() {
             const selectedOption = this.options[this.selectedIndex];
             const price = selectedOption.dataset.price;
             const stock = selectedOption.dataset.stock;
+            
             priceInput.value = price || 0;
+            
+            if (this.value) {
+                quantityInput.max = stock;
+            } else {
+                quantityInput.removeAttribute('max');
+            }
             
             // Show stock info in separate column
             const stockInfo = itemRow.querySelector('.stock-info');
             if (stock !== undefined && this.value) {
                 stockInfo.innerHTML = `<span class="badge bg-${stock > 10 ? 'success' : (stock > 0 ? 'warning' : 'danger')}">${stock}</span>`;
-                quantityInput.max = stock;
             } else {
                 stockInfo.innerHTML = '<span class="badge bg-secondary">-</span>';
-                quantityInput.removeAttribute('max');
             }
             
             calculateItemTotal(itemRow);
@@ -347,8 +380,15 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                alert('Sale recorded successfully! Transaction ID: ' + data.transaction_id);
-                window.location.href = '{{ route("staff.dashboard") }}';
+                // Show success modal
+                document.getElementById('transactionId').textContent = data.transaction_id;
+                const successModal = new bootstrap.Modal(document.getElementById('successModal'));
+                successModal.show();
+                
+                // Redirect when modal OK is clicked
+                document.getElementById('successModalOk').addEventListener('click', function() {
+                    window.location.href = '{{ route("staff.dashboard") }}';
+                });
             } else {
                 alert('Error: ' + data.message);
                 submitBtn.disabled = false;

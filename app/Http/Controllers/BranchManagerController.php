@@ -81,7 +81,8 @@ class BranchManagerController extends Controller
 
         // Pending reports count
         $pendingReports = DailySale::where('branch_id', $branchId)
-            ->where('status', 'pending')
+            ->whereNull('verified_by')
+            ->where('status', '!=', 'rejected')
             ->count();
 
         // Low stock items for THIS branch
@@ -831,6 +832,123 @@ class BranchManagerController extends Controller
     }
 
     /**
+     * Add a new product to the branch inventory
+     */
+    public function addProduct(Request $request)
+    {
+        try {
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'category_id' => 'required|exists:categories,id',
+                'price' => 'required|numeric|min:0',
+                'cost_price' => 'nullable|numeric|min:0',
+                'description' => 'nullable|string|max:1000',
+                'initial_stock' => 'nullable|integer|min:0',
+            ]);
+
+            $user = auth()->user();
+            $branchId = $user->branch_id;
+
+            // Create the product
+            $product = Product::create([
+                'name' => $request->name,
+                'category_id' => $request->category_id,
+                'price' => $request->price,
+                'cost_price' => $request->cost_price ?? ($request->price * 0.6), // Default 40% margin
+                'description' => $request->description,
+                'is_available' => true,
+            ]);
+
+            // Create branch stock entry
+            $initialStock = $request->initial_stock ?? 0;
+            BranchStock::create([
+                'branch_id' => $branchId,
+                'product_id' => $product->id,
+                'stock_quantity' => $initialStock,
+                'is_available' => true,
+                'received_date' => $initialStock > 0 ? now() : null,
+            ]);
+
+            // Log the stock addition if there's initial stock
+            if ($initialStock > 0) {
+                \App\Models\StockLog::create([
+                    'product_id' => $product->id,
+                    'branch_id' => $branchId,
+                    'user_id' => auth()->id(),
+                    'quantity' => $initialStock,
+                    'type' => 'add',
+                    'notes' => 'Initial stock when adding new product',
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Product added successfully',
+                'product' => $product,
+                'product_name' => $product->name,
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed: ' . implode(', ', $e->validator->errors()->all()),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to add product: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Remove a product from the branch inventory
+     */
+    public function removeProduct($id)
+    {
+        try {
+            $user = auth()->user();
+            $branchId = $user->branch_id;
+
+            $product = Product::findOrFail($id);
+
+            // Check if product has any sales history
+            $hasSales = \App\Models\DailySalesItem::where('product_id', $id)->exists();
+            
+            if ($hasSales) {
+                // If product has sales history, just remove from branch stock (soft removal)
+                BranchStock::where('branch_id', $branchId)
+                    ->where('product_id', $id)
+                    ->delete();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Product removed from your branch inventory. Product data preserved for sales history.',
+                ]);
+            } else {
+                // If no sales history, delete the product entirely
+                // First delete branch stocks
+                BranchStock::where('product_id', $id)->delete();
+                
+                // Delete stock logs
+                \App\Models\StockLog::where('product_id', $id)->delete();
+                
+                // Delete the product
+                $product->delete();
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Product completely removed from the system.',
+                ]);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to remove product: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Get report details
      */
     public function getReportDetails($id)
@@ -877,7 +995,8 @@ class BranchManagerController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => $count . ' report(s) finalized and submitted to HQ successfully.'
+            'message' => $count . ' report(s) finalized and submitted to HQ successfully.',
+            'count' => $count
         ]);
     }
 
@@ -1115,6 +1234,7 @@ class BranchManagerController extends Controller
         // Get pending reports count
         $pendingReports = DailySale::where('branch_id', $branchId)
             ->whereNull('verified_by')
+            ->where('status', '!=', 'rejected')
             ->count();
 
         return view('branch-manager.alerts', compact('notifications', 'lowStockProducts', 'pendingReports'));

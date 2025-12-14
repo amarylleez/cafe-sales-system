@@ -92,6 +92,8 @@ Route::middleware(['auth'])->prefix('branch-manager')->name('branch-manager.')->
     // Inventory
     Route::get('/inventory', [BranchManagerController::class, 'inventory'])->name('inventory');
     Route::post('/inventory/{id}/availability', [BranchManagerController::class, 'updateProductAvailability'])->name('inventory.availability');
+    Route::post('/inventory/add-product', [BranchManagerController::class, 'addProduct'])->name('inventory.add-product');
+    Route::delete('/inventory/{id}/remove', [BranchManagerController::class, 'removeProduct'])->name('inventory.remove-product');
     
     // Stock Management (View Only)
     Route::get('/stock', [BranchManagerController::class, 'stock'])->name('stock');
@@ -125,6 +127,7 @@ Route::middleware(['auth'])->prefix('staff')->name('staff.')->group(function () 
     
     // Inventory Routes
     Route::get('/inventory', [StaffController::class, 'inventory'])->name('inventory');
+    Route::get('/inventory/all-products', [StaffController::class, 'getAllProducts'])->name('inventory.all-products');
     Route::post('/inventory/{id}/availability', [StaffController::class, 'updateProductAvailability'])->name('inventory.availability');
     Route::get('/inventory/{id}', [InventoryController::class, 'show'])->name('inventory.show');
     Route::post('/inventory/{id}/mark-sold', [InventoryController::class, 'markAsSold'])->name('inventory.mark-sold');

@@ -8,5 +8,5 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Schedule the expired stock processing to run daily at midnight
-Schedule::command('stock:process-expired')->dailyAt('00:00');
+// Schedule the expired stock processing to run daily at 3 PM (shop closing time: 6 AM - 3 PM)
+Schedule::command('stock:process-expired')->dailyAt('15:00');

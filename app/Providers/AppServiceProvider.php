@@ -98,6 +98,7 @@ class AppServiceProvider extends ServiceProvider
                 // Get pending reports count
                 $pendingReportsCount = DailySale::where('branch_id', $branchId)
                     ->whereNull('verified_by')
+                    ->where('status', '!=', 'rejected')
                     ->count();
                 
                 // Total alerts count

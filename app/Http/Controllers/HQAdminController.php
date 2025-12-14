@@ -379,6 +379,15 @@ class HQAdminController extends Controller
         // Monthly profit trend data (last 6 months)
         $monthlyProfitTrend = $this->getMonthlyProfitTrend($branchFilter);
 
+        // Stock Loss Trend (last 30 days)
+        $stockLossTrend = $this->getStockLossTrend($branchFilter);
+        
+        // Stock Loss by Category
+        $stockLossByCategory = $this->getStockLossByCategory($branchFilter, $startDate, $endDate);
+        
+        // Stock Loss by Branch
+        $stockLossByBranch = $this->getStockLossByBranch($startDate, $endDate);
+
         return view('hq-admin.analytics', compact(
             'topBranches',
             'comparisonData',
@@ -398,6 +407,9 @@ class HQAdminController extends Controller
             'topProfitableProducts',
             'branchProfitData',
             'monthlyProfitTrend',
+            'stockLossTrend',
+            'stockLossByCategory',
+            'stockLossByBranch',
             'startDate',
             'endDate',
             'dateRange'
@@ -1450,6 +1462,168 @@ class HQAdminController extends Controller
             'cost' => $costData,
             'profit' => $profitData
         ];
+    }
+
+    /**
+     * Get stock loss trend over the last 30 days
+     */
+    private function getStockLossTrend($branchFilter = null)
+    {
+        $labels = [];
+        $unsoldData = [];
+        $rejectedData = [];
+        $totalData = [];
+
+        for ($i = 29; $i >= 0; $i--) {
+            $date = Carbon::now()->subDays($i);
+            $labels[] = $date->format('M d');
+            
+            // Unsold stock loss for this day
+            $unsoldQuery = BranchStock::with('product')
+                ->where('stock_quantity', '>', 0)
+                ->whereNotNull('received_date')
+                ->whereDate('received_date', $date);
+                
+            if ($branchFilter) {
+                $unsoldQuery->where('branch_id', $branchFilter);
+            }
+            
+            $unsoldLoss = $unsoldQuery->get()->sum(function($stock) {
+                return $stock->stock_quantity * ($stock->cost_at_purchase ?? $stock->product->cost_price ?? 0);
+            });
+            
+            // Rejected sales loss for this day
+            $rejectedQuery = DailySalesItem::with('product')
+                ->whereHas('dailySale', function($q) use ($date, $branchFilter) {
+                    $q->whereDate('sale_date', $date)
+                      ->where('status', 'rejected');
+                      
+                    if ($branchFilter) {
+                        $q->where('branch_id', $branchFilter);
+                    }
+                });
+            
+            $rejectedLoss = $rejectedQuery->get()->sum(function($item) {
+                return $item->quantity * ($item->product->cost_price ?? 0);
+            });
+            
+            $unsoldData[] = round($unsoldLoss, 2);
+            $rejectedData[] = round($rejectedLoss, 2);
+            $totalData[] = round($unsoldLoss + $rejectedLoss, 2);
+        }
+
+        return [
+            'labels' => $labels,
+            'unsold' => $unsoldData,
+            'rejected' => $rejectedData,
+            'total' => $totalData
+        ];
+    }
+
+    /**
+     * Get stock loss breakdown by category
+     */
+    private function getStockLossByCategory($branchFilter, $startDate, $endDate)
+    {
+        $categories = \App\Models\Category::all();
+        $data = [];
+
+        foreach ($categories as $category) {
+            // Unsold stock loss
+            $unsoldQuery = BranchStock::with('product')
+                ->whereHas('product', function($q) use ($category) {
+                    $q->where('category_id', $category->id);
+                })
+                ->where('stock_quantity', '>', 0)
+                ->whereNotNull('received_date')
+                ->where('received_date', '<', Carbon::today());
+                
+            if ($branchFilter) {
+                $unsoldQuery->where('branch_id', $branchFilter);
+            }
+            
+            $unsoldLoss = $unsoldQuery->get()->sum(function($stock) {
+                return $stock->stock_quantity * ($stock->cost_at_purchase ?? $stock->product->cost_price ?? 0);
+            });
+            
+            // Rejected sales loss
+            $rejectedQuery = DailySalesItem::with('product')
+                ->whereHas('product', function($q) use ($category) {
+                    $q->where('category_id', $category->id);
+                })
+                ->whereHas('dailySale', function($q) use ($startDate, $endDate, $branchFilter) {
+                    $q->whereBetween('sale_date', [$startDate, $endDate])
+                      ->where('status', 'rejected');
+                      
+                    if ($branchFilter) {
+                        $q->where('branch_id', $branchFilter);
+                    }
+                });
+            
+            $rejectedLoss = $rejectedQuery->get()->sum(function($item) {
+                return $item->quantity * ($item->product->cost_price ?? 0);
+            });
+            
+            $totalLoss = $unsoldLoss + $rejectedLoss;
+            
+            if ($totalLoss > 0) {
+                $data[] = [
+                    'category' => $category->name,
+                    'unsold' => $unsoldLoss,
+                    'rejected' => $rejectedLoss,
+                    'total' => $totalLoss
+                ];
+            }
+        }
+
+        return collect($data)->sortByDesc('total')->values();
+    }
+
+    /**
+     * Get stock loss breakdown by branch
+     */
+    private function getStockLossByBranch($startDate, $endDate)
+    {
+        $branches = Branch::all();
+        $data = [];
+
+        foreach ($branches as $branch) {
+            // Unsold stock loss
+            $unsoldLoss = BranchStock::with('product')
+                ->where('branch_id', $branch->id)
+                ->where('stock_quantity', '>', 0)
+                ->whereNotNull('received_date')
+                ->where('received_date', '<', Carbon::today())
+                ->get()
+                ->sum(function($stock) {
+                    return $stock->stock_quantity * ($stock->cost_at_purchase ?? $stock->product->cost_price ?? 0);
+                });
+            
+            // Rejected sales loss
+            $rejectedLoss = DailySalesItem::with('product')
+                ->whereHas('dailySale', function($q) use ($startDate, $endDate, $branch) {
+                    $q->whereBetween('sale_date', [$startDate, $endDate])
+                      ->where('status', 'rejected')
+                      ->where('branch_id', $branch->id);
+                })
+                ->get()
+                ->sum(function($item) {
+                    return $item->quantity * ($item->product->cost_price ?? 0);
+                });
+            
+            $totalLoss = $unsoldLoss + $rejectedLoss;
+            
+            if ($totalLoss > 0) {
+                $data[] = [
+                    'branch' => $branch->name,
+                    'unsold' => $unsoldLoss,
+                    'rejected' => $rejectedLoss,
+                    'total' => $totalLoss
+                ];
+            }
+        }
+
+        return collect($data)->sortByDesc('total')->values();
     }
 
     /**

@@ -238,10 +238,61 @@
     </div>
 </div>
 
+<!-- Finalize Confirmation Modal -->
+<div class="modal fade" id="finalizeConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-body text-center p-5">
+                <div class="mb-4">
+                    <i class="bi bi-exclamation-triangle-fill text-warning" style="font-size: 4rem;"></i>
+                    <h4 class="mt-3 mb-3">Finalize and Submit to HQ?</h4>
+                    <p class="text-muted mb-0">Are you sure you want to finalize and submit all pending reports to HQ? This will approve all pending transactions.</p>
+                </div>
+                <div class="d-flex gap-2 justify-content-center">
+                    <button type="button" class="btn btn-secondary btn-lg px-4" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle"></i> Cancel
+                    </button>
+                    <button type="button" class="btn btn-primary btn-lg px-4" id="confirmFinalizeBtn">
+                        <i class="bi bi-check-circle"></i> Yes, Submit
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Finalize Success Modal -->
+<div class="modal fade" id="finalizeSuccessModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-body text-center p-5">
+                <div class="mb-4">
+                    <div class="success-checkmark mx-auto mb-3">
+                        <i class="bi bi-check-circle-fill text-success" style="font-size: 5rem;"></i>
+                    </div>
+                    <h3 class="text-success mb-3">Reports Submitted Successfully!</h3>
+                    <div class="alert alert-light border">
+                        <strong>Reports Finalized:</strong>
+                        <div class="mt-2">
+                            <span id="finalizedCount" class="fs-4 text-primary fw-bold"></span>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-0">All pending transactions have been approved and submitted to HQ.</p>
+                </div>
+                <button type="button" class="btn btn-primary btn-lg px-5" id="finalizeSuccessOk">
+                    <i class="bi bi-check-circle"></i> OK
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @push('scripts')
 <script>
 const viewReportModal = new bootstrap.Modal(document.getElementById('viewReportModal'));
 const rejectReportModal = new bootstrap.Modal(document.getElementById('rejectReportModal'));
+const finalizeConfirmModal = new bootstrap.Modal(document.getElementById('finalizeConfirmModal'));
+const finalizeSuccessModal = new bootstrap.Modal(document.getElementById('finalizeSuccessModal'));
 
 // Date range toggle for custom dates
 document.getElementById('dateRange').addEventListener('change', function() {
@@ -432,29 +483,49 @@ function exportReport() {
 
 // Finalize and submit to HQ
 function finalizeAndSubmit() {
-    if (confirm('Are you sure you want to finalize and submit all pending reports to HQ? This will approve all pending transactions.')) {
-        fetch('/branch-manager/sales-report/finalize', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert(data.message);
-                location.reload();
-            } else {
-                alert(data.message || 'No pending reports to finalize.');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('An error occurred while processing your request.');
-        });
-    }
+    finalizeConfirmModal.show();
 }
+
+// Confirm finalize button click
+document.getElementById('confirmFinalizeBtn').addEventListener('click', function() {
+    const btn = this;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+    
+    fetch('/branch-manager/sales-report/finalize', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        finalizeConfirmModal.hide();
+        
+        if (data.success) {
+            // Show success modal
+            document.getElementById('finalizedCount').textContent = data.count || '0';
+            finalizeSuccessModal.show();
+            
+            // Reload when OK is clicked
+            document.getElementById('finalizeSuccessOk').addEventListener('click', function() {
+                location.reload();
+            });
+        } else {
+            alert(data.message || 'No pending reports to finalize.');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-circle"></i> Yes, Submit';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        finalizeConfirmModal.hide();
+        alert('An error occurred while processing your request.');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-circle"></i> Yes, Submit';
+    });
+});
 </script>
 @endpush
 @endsection

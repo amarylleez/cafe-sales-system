@@ -162,10 +162,28 @@ class StaffController extends Controller
      */
     public function createSales()
     {
+        $user = auth()->user();
+        $branchId = $user->branch_id;
+        
         $products = Product::with('category')
             ->where('is_available', true)
             ->orderBy('name')
-            ->get();
+            ->get()
+            ->map(function ($product) use ($branchId) {
+                // Get branch-specific stock
+                $branchStock = BranchStock::where('branch_id', $branchId)
+                    ->where('product_id', $product->id)
+                    ->first();
+                
+                $product->stock_quantity = $branchStock ? $branchStock->stock_quantity : 0;
+                $product->is_available = $branchStock ? $branchStock->is_available : true;
+                
+                return $product;
+            })
+            // Only show products that are available at this branch
+            ->filter(function($product) {
+                return $product->is_available && $product->stock_quantity > 0;
+            });
 
         $categories = Category::all();
 
@@ -563,6 +581,35 @@ class StaffController extends Controller
             ->get();
 
         return view('staff.inventory', compact('products', 'categories', 'selectedCategory'));
+    }
+
+    /**
+     * Get all products for bulk restock (no pagination)
+     */
+    public function getAllProducts()
+    {
+        $user = auth()->user();
+        $branchId = $user->branch_id;
+        
+        // Get all products with branch-specific stock
+        $products = Product::with('category')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($product) use ($branchId) {
+                $branchStock = BranchStock::where('branch_id', $branchId)
+                    ->where('product_id', $product->id)
+                    ->first();
+                
+                $product->stock_quantity = $branchStock ? $branchStock->stock_quantity : 0;
+                $product->is_available = $branchStock ? $branchStock->is_available : true;
+                
+                return $product;
+            });
+
+        return response()->json([
+            'success' => true,
+            'products' => $products
+        ]);
     }
 
     /**

@@ -21,7 +21,7 @@ class ProcessExpiredStock extends Command
      *
      * @var string
      */
-    protected $description = 'Process expired stock (24 hours old) - marks as loss and resets quantity';
+    protected $description = 'Process expired stock at 3 PM daily (shop hours: 6 AM - 3 PM) - marks unsold items as loss';
 
     /**
      * Execute the console command.
@@ -30,13 +30,15 @@ class ProcessExpiredStock extends Command
     {
         $isDryRun = $this->option('dry-run');
         
-        $this->info('Processing expired stock (received before today)...');
+        $this->info('Processing expired stock (unsold items from previous day at 3 PM)...');
         
-        // Get all stock that was received before today and has quantity > 0
+        // Get all stock that was received before today (before current 3 PM cutoff)
+        // Stock received yesterday or earlier should be expired
+        $today = Carbon::today();
         $expiredStock = BranchStock::with(['product', 'branch'])
             ->where('stock_quantity', '>', 0)
             ->whereNotNull('received_date')
-            ->where('received_date', '<', Carbon::today())
+            ->where('received_date', '<', $today)
             ->get();
 
         if ($expiredStock->isEmpty()) {
@@ -68,7 +70,7 @@ class ProcessExpiredStock extends Command
                     'user_id' => null, // System action
                     'quantity' => $stock->stock_quantity,
                     'type' => 'expired',
-                    'notes' => "Expired stock (unsold for 24+ hours). Loss: RM " . number_format($loss, 2) . ". Original received date: {$stock->received_date->format('Y-m-d')}",
+                    'notes' => "Expired stock (unsold by 3 PM closing time). Loss: RM " . number_format($loss, 2) . ". Original received date: {$stock->received_date->format('Y-m-d')}",
                 ]);
 
                 // Reset the stock quantity and received date
