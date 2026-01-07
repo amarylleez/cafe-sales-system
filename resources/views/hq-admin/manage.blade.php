@@ -243,6 +243,26 @@
                             @endforeach
                         </select>
                     </div>
+                    
+                    <hr class="my-3">
+                    
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="changePasswordCheck">
+                        <label class="form-check-label" for="changePasswordCheck">
+                            <i class="bi bi-key"></i> Change Password
+                        </label>
+                    </div>
+                    <div id="passwordFields" style="display: none;">
+                        <div class="mb-3">
+                            <label class="form-label">New Password</label>
+                            <input type="password" class="form-control" id="editPassword" name="password" minlength="8">
+                            <div class="form-text">Minimum 8 characters</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Confirm Password</label>
+                            <input type="password" class="form-control" id="editPasswordConfirm" name="password_confirmation" minlength="8">
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -258,6 +278,35 @@
 @push('scripts')
 <script>
 const editModal = new bootstrap.Modal(document.getElementById('editStaffModal'));
+
+// Password change toggle
+document.getElementById('changePasswordCheck').addEventListener('change', function() {
+    const passwordFields = document.getElementById('passwordFields');
+    const passwordInput = document.getElementById('editPassword');
+    const confirmInput = document.getElementById('editPasswordConfirm');
+    
+    if (this.checked) {
+        passwordFields.style.display = 'block';
+        passwordInput.required = true;
+        confirmInput.required = true;
+    } else {
+        passwordFields.style.display = 'none';
+        passwordInput.required = false;
+        confirmInput.required = false;
+        passwordInput.value = '';
+        confirmInput.value = '';
+    }
+});
+
+// Reset password fields when modal opens
+document.getElementById('editStaffModal').addEventListener('hidden.bs.modal', function() {
+    document.getElementById('changePasswordCheck').checked = false;
+    document.getElementById('passwordFields').style.display = 'none';
+    document.getElementById('editPassword').value = '';
+    document.getElementById('editPasswordConfirm').value = '';
+    document.getElementById('editPassword').required = false;
+    document.getElementById('editPasswordConfirm').required = false;
+});
 
 // Search and filter functionality
 document.getElementById('searchStaff').addEventListener('input', filterCards);

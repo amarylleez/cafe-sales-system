@@ -798,15 +798,23 @@ class HQAdminController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $id,
             'role' => 'required|in:hq_admin,branch_manager,staff',
-            'branch_id' => 'nullable|required_unless:role,hq_admin|exists:branches,id'
+            'branch_id' => 'nullable|required_unless:role,hq_admin|exists:branches,id',
+            'password' => 'nullable|min:8|confirmed'
         ]);
 
-        $staff->update([
+        $updateData = [
             'name' => $request->name,
             'email' => $request->email,
             'role' => $request->role,
             'branch_id' => $request->role === 'hq_admin' ? null : $request->branch_id,
-        ]);
+        ];
+
+        // Update password if provided
+        if ($request->filled('password')) {
+            $updateData['password'] = bcrypt($request->password);
+        }
+
+        $staff->update($updateData);
 
         return response()->json([
             'success' => true,
