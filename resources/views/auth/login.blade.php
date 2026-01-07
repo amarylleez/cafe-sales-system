@@ -154,7 +154,7 @@
 
         .form-footer {
             display: flex;
-            justify-content: flex-end;
+            justify-content: space-between;
             align-items: center;
             margin-top: 30px;
             flex-wrap: wrap;
