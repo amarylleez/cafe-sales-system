@@ -8,6 +8,7 @@ use App\Models\BranchStock;
 use App\Models\DailySale;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -25,6 +26,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Force HTTPS in production (DigitalOcean App Platform)
+        if (config('app.env') === 'production') {
+            URL::forceScheme('https');
+        }
+
         // Share notification count with staff layout
         View::composer('layouts.staff', function ($view) {
             if (Auth::check()) {
