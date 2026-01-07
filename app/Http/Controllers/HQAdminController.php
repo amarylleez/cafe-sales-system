@@ -798,7 +798,7 @@ class HQAdminController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $id,
             'role' => 'required|in:hq_admin,branch_manager,staff',
-            'branch_id' => 'required_unless:role,hq_admin|exists:branches,id'
+            'branch_id' => 'nullable|required_unless:role,hq_admin|exists:branches,id'
         ]);
 
         $staff->update([
