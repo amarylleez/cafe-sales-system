@@ -769,8 +769,12 @@ class BranchManagerController extends Controller
         $user = auth()->user();
         $branchId = $user->branch_id;
         
-        // Build query with optional category filter and search
-        $query = Product::with('category')->orderBy('name');
+        // Build query - only show products that have BranchStock for this branch
+        $query = Product::with('category')
+            ->whereHas('branchStocks', function($q) use ($branchId) {
+                $q->where('branch_id', $branchId);
+            })
+            ->orderBy('name');
         
         $selectedCategory = $request->input('category');
         if ($selectedCategory && $selectedCategory !== 'all') {

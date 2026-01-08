@@ -44,6 +44,14 @@ class Product extends Model
     }
 
     /**
+     * Get all branch stocks for this product
+     */
+    public function branchStocks(): HasMany
+    {
+        return $this->hasMany(BranchStock::class);
+    }
+
+    /**
      * Get total quantity sold for this product
      * @param int|null $branchId Optional branch ID to filter by
      */
