@@ -991,6 +991,109 @@ class BranchManagerController extends Controller
     }
 
     /**
+     * Update product details (price, description)
+     */
+    public function updateProduct(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'price' => 'required|numeric|min:0',
+                'cost_price' => 'nullable|numeric|min:0',
+                'description' => 'nullable|string|max:1000',
+            ]);
+
+            $product = Product::findOrFail($id);
+            
+            $product->update([
+                'price' => $request->price,
+                'cost_price' => $request->cost_price ?? $product->cost_price,
+                'description' => $request->description,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Product updated successfully',
+                'product' => $product->fresh(),
+            ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed: ' . implode(', ', $e->validator->errors()->all()),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update product: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Adjust stock quantity (add/remove) - similar to Staff's adjustStock
+     */
+    public function adjustStock(Request $request, $id)
+    {
+        try {
+            $request->validate([
+                'quantity' => 'required|integer|min:1',
+                'type' => 'required|in:add,remove',
+            ]);
+
+            $user = auth()->user();
+            $branchId = $user->branch_id;
+            
+            // Get product with category to check expiry hours
+            $product = Product::with('category')->findOrFail($id);
+            
+            // Get or create branch stock
+            $branchStock = BranchStock::getOrCreate($branchId, $id);
+            
+            if ($request->type === 'add') {
+                $branchStock->stock_quantity += $request->quantity;
+                $branchStock->received_date = now();
+                
+                // Calculate expiry date based on category's expiry_hours
+                if ($product->category && $product->category->expiry_hours) {
+                    $branchStock->expiry_date = now()->addHours($product->category->expiry_hours);
+                } else {
+                    $branchStock->expiry_date = null;
+                }
+            } else {
+                if ($branchStock->stock_quantity < $request->quantity) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Cannot remove more than current stock',
+                    ], 400);
+                }
+                $branchStock->stock_quantity -= $request->quantity;
+            }
+            
+            $branchStock->save();
+
+            // Log the stock change
+            \App\Models\StockLog::create([
+                'product_id' => $id,
+                'branch_id' => $branchId,
+                'user_id' => auth()->id(),
+                'quantity' => $request->quantity,
+                'type' => $request->type,
+                'notes' => $request->type === 'add' ? 'Stock added by Branch Manager' : 'Stock removed by Branch Manager',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Stock adjusted successfully',
+                'new_quantity' => $branchStock->stock_quantity,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to adjust stock: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Get report details
      */
     public function getReportDetails($id)

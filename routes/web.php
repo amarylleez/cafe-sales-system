@@ -92,11 +92,13 @@ Route::middleware(['auth'])->prefix('branch-manager')->name('branch-manager.')->
     // Inventory
     Route::get('/inventory', [BranchManagerController::class, 'inventory'])->name('inventory');
     Route::post('/inventory/{id}/availability', [BranchManagerController::class, 'updateProductAvailability'])->name('inventory.availability');
+    Route::post('/inventory/{id}/update', [BranchManagerController::class, 'updateProduct'])->name('inventory.update');
     Route::post('/inventory/add-product', [BranchManagerController::class, 'addProduct'])->name('inventory.add-product');
     Route::delete('/inventory/{id}/remove', [BranchManagerController::class, 'removeProduct'])->name('inventory.remove-product');
     
-    // Stock Management (View Only)
+    // Stock Management
     Route::get('/stock', [BranchManagerController::class, 'stock'])->name('stock');
+    Route::post('/stock/{id}/adjust', [BranchManagerController::class, 'adjustStock'])->name('stock.adjust');
 
     // Alerts/Notifications
     Route::get('/alerts', [BranchManagerController::class, 'alerts'])->name('alerts');

@@ -186,11 +186,11 @@
 
 <!-- Product Details Modal -->
 <div class="modal fade" id="productDetailsModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Product Details</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-box-seam"></i> <span id="modalProductName">Product Details</span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="productDetailsContent">
                 <div class="text-center">
@@ -510,6 +510,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
             `;
+            document.getElementById('modalProductName').textContent = 'Product Details';
             
             productDetailsModal.show();
             
@@ -520,44 +521,110 @@ document.addEventListener('DOMContentLoaded', function() {
                     const product = data.product;
                     const stats = data.statistics;
                     
+                    document.getElementById('modalProductName').textContent = product.name;
+                    
                     document.getElementById('productDetailsContent').innerHTML = `
                         <div class="row">
+                            <!-- Left Column: Product Info & Edit Form -->
                             <div class="col-md-6">
-                                <h6>Product Information</h6>
-                                <table class="table">
-                                    <tr><th>Name:</th><td>${product.name}</td></tr>
-                                    <tr><th>Category:</th><td>${product.category.name}</td></tr>
-                                    <tr><th>Price:</th><td>RM ${parseFloat(product.price).toFixed(2)}</td></tr>
-                                    <tr><th>Status:</th><td><span class="badge bg-${product.is_available ? 'success' : 'danger'}">${product.is_available ? 'Available' : 'Unavailable'}</span></td></tr>
-                                    <tr><th>Added to Stock:</th><td>${stats.added_date}</td></tr>
-                                </table>
-                                ${product.description ? `<p class="text-muted">${product.description}</p>` : ''}
-                            </div>
-                            <div class="col-md-6">
-                                <h6>Sales Statistics</h6>
-                                <div class="card bg-light mb-3">
+                                <div class="card mb-3">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0"><i class="bi bi-info-circle"></i> Product Information</h6>
+                                    </div>
                                     <div class="card-body">
-                                        <div class="mb-3">
-                                            <small class="text-muted">Total Sold</small>
-                                            <h4>${stats.total_sold} units</h4>
+                                        <form id="editProductForm">
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">Name</label>
+                                                <input type="text" class="form-control bg-light" value="${product.name}" readonly>
+                                                <small class="text-muted">Product name cannot be changed</small>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">Category</label>
+                                                <input type="text" class="form-control bg-light" value="${product.category.name}" readonly>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label fw-semibold">Selling Price (RM) <span class="text-danger">*</span></label>
+                                                    <input type="number" class="form-control" id="editPrice" value="${parseFloat(product.price).toFixed(2)}" step="0.01" min="0" required>
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label fw-semibold">Cost Price (RM)</label>
+                                                    <input type="number" class="form-control" id="editCostPrice" value="${product.cost_price ? parseFloat(product.cost_price).toFixed(2) : ''}" step="0.01" min="0" placeholder="Optional">
+                                                </div>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">Description / Notes</label>
+                                                <textarea class="form-control" id="editDescription" rows="3" placeholder="Add notes or description...">${product.description || ''}</textarea>
+                                            </div>
+                                            <div class="d-grid">
+                                                <button type="button" class="btn btn-primary" id="saveProductChanges" data-product-id="${product.id}">
+                                                    <i class="bi bi-check-circle"></i> Save Changes
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Right Column: Stats & Stock Management -->
+                            <div class="col-md-6">
+                                <!-- Sales Statistics -->
+                                <div class="card mb-3">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0"><i class="bi bi-graph-up"></i> Sales Statistics</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="row text-center">
+                                            <div class="col-6">
+                                                <small class="text-muted d-block">Total Sold</small>
+                                                <h4 class="mb-0">${stats.total_sold} units</h4>
+                                            </div>
+                                            <div class="col-6">
+                                                <small class="text-muted d-block">Total Revenue</small>
+                                                <h4 class="mb-0 text-success">RM ${parseFloat(stats.total_revenue).toFixed(2)}</h4>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <small class="text-muted">Total Revenue</small>
-                                            <h4 class="text-success">RM ${parseFloat(stats.total_revenue).toFixed(2)}</h4>
+                                        <hr>
+                                        <div class="text-center">
+                                            <small class="text-muted d-block">Added to Stock</small>
+                                            <span>${stats.added_date}</span>
                                         </div>
                                     </div>
                                 </div>
                                 
-                                <h6>Current Stock</h6>
-                                <div class="card border-info">
-                                    <div class="card-body text-center">
-                                        <h3 class="mb-0 text-${stats.stock_quantity > 10 ? 'success' : (stats.stock_quantity > 0 ? 'warning' : 'danger')}">${stats.stock_quantity} units</h3>
-                                        <small class="text-muted">${stats.stock_quantity > 10 ? 'Well Stocked' : (stats.stock_quantity > 0 ? 'Low Stock' : 'Out of Stock')}</small>
+                                <!-- Stock Management -->
+                                <div class="card border-primary">
+                                    <div class="card-header bg-primary text-white">
+                                        <h6 class="mb-0"><i class="bi bi-boxes"></i> Stock Management</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="text-center mb-3">
+                                            <small class="text-muted d-block">Current Stock</small>
+                                            <h2 id="currentStockDisplay" class="mb-0 text-${stats.stock_quantity > 10 ? 'success' : (stats.stock_quantity > 0 ? 'warning' : 'danger')}">${stats.stock_quantity} units</h2>
+                                            <small class="text-muted">${stats.stock_quantity > 10 ? 'Well Stocked' : (stats.stock_quantity > 0 ? 'Low Stock' : 'Out of Stock')}</small>
+                                        </div>
+                                        <hr>
+                                        <div class="d-flex justify-content-center align-items-center gap-2 mb-2">
+                                            <button type="button" class="btn btn-danger btn-lg" id="decreaseStockBtn" data-product-id="${product.id}" ${stats.stock_quantity <= 0 ? 'disabled' : ''}>
+                                                <i class="bi bi-dash-lg"></i>
+                                            </button>
+                                            <input type="number" id="stockAdjustAmount" class="form-control text-center" value="1" min="1" max="999" style="width: 100px; font-size: 1.2rem;">
+                                            <button type="button" class="btn btn-success btn-lg" id="increaseStockBtn" data-product-id="${product.id}">
+                                                <i class="bi bi-plus-lg"></i>
+                                            </button>
+                                        </div>
+                                        <div class="text-center">
+                                            <small class="text-muted">Click <span class="text-danger">-</span> to remove or <span class="text-success">+</span> to add stock</small>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     `;
+                    
+                    // Attach handlers
+                    attachProductEditHandlers(product.id);
+                    attachStockHandlers(product.id, stats.stock_quantity);
                 }
             })
             .catch(error => {
@@ -568,6 +635,138 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     });
+    
+    // Product edit save handler
+    function attachProductEditHandlers(productId) {
+        document.getElementById('saveProductChanges').addEventListener('click', function() {
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+            
+            const data = {
+                price: parseFloat(document.getElementById('editPrice').value) || 0,
+                cost_price: document.getElementById('editCostPrice').value ? parseFloat(document.getElementById('editCostPrice').value) : null,
+                description: document.getElementById('editDescription').value
+            };
+            
+            fetch(`/branch-manager/inventory/${productId}/update`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(result => {
+                if (result.success) {
+                    btn.innerHTML = '<i class="bi bi-check-circle"></i> Saved!';
+                    btn.classList.remove('btn-primary');
+                    btn.classList.add('btn-success');
+                    
+                    // Update the card on the main page
+                    const productCard = document.querySelector(`[data-product-id="${productId}"]`);
+                    if (productCard) {
+                        const priceElement = productCard.querySelector('.text-primary strong, strong.text-primary');
+                        if (priceElement) {
+                            priceElement.textContent = 'RM ' + parseFloat(data.price).toFixed(2);
+                        }
+                    }
+                    
+                    setTimeout(() => {
+                        btn.innerHTML = '<i class="bi bi-check-circle"></i> Save Changes';
+                        btn.classList.remove('btn-success');
+                        btn.classList.add('btn-primary');
+                        btn.disabled = false;
+                    }, 2000);
+                } else {
+                    alert(result.message || 'Failed to save changes');
+                    btn.innerHTML = '<i class="bi bi-check-circle"></i> Save Changes';
+                    btn.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while saving');
+                btn.innerHTML = '<i class="bi bi-check-circle"></i> Save Changes';
+                btn.disabled = false;
+            });
+        });
+    }
+    
+    // Stock adjustment handlers
+    function attachStockHandlers(productId, currentStock) {
+        let stockCount = currentStock;
+        
+        document.getElementById('increaseStockBtn').addEventListener('click', function() {
+            const amount = parseInt(document.getElementById('stockAdjustAmount').value) || 1;
+            adjustStock(productId, amount, 'add');
+        });
+        
+        document.getElementById('decreaseStockBtn').addEventListener('click', function() {
+            const amount = parseInt(document.getElementById('stockAdjustAmount').value) || 1;
+            if (stockCount >= amount) {
+                adjustStock(productId, amount, 'remove');
+            } else {
+                alert('Cannot remove more than current stock');
+            }
+        });
+    }
+    
+    function adjustStock(productId, amount, type) {
+        const btn = type === 'add' ? document.getElementById('increaseStockBtn') : document.getElementById('decreaseStockBtn');
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        
+        fetch(`/branch-manager/stock/${productId}/adjust`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({ quantity: amount, type: type })
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Server error');
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                const stockDisplay = document.getElementById('currentStockDisplay');
+                stockDisplay.textContent = data.new_quantity + ' units';
+                
+                // Update color based on stock level
+                stockDisplay.className = 'mb-0 text-' + (data.new_quantity > 10 ? 'success' : (data.new_quantity > 0 ? 'warning' : 'danger'));
+                
+                // Update decrease button state
+                const decreaseBtn = document.getElementById('decreaseStockBtn');
+                decreaseBtn.disabled = data.new_quantity <= 0;
+                
+                // Update the card on the main page
+                const productCard = document.querySelector(`[data-product-id="${productId}"]`);
+                if (productCard) {
+                    const stockBadge = productCard.querySelector('.badge.bg-info, .badge.bg-warning, .badge.bg-danger');
+                    if (stockBadge && stockBadge.textContent.includes('units')) {
+                        stockBadge.textContent = data.new_quantity + ' units';
+                        stockBadge.className = 'badge bg-' + (data.new_quantity > 10 ? 'info' : (data.new_quantity > 0 ? 'warning' : 'danger'));
+                    }
+                }
+            } else {
+                alert(data.message || 'Failed to adjust stock');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while adjusting stock');
+        })
+        .finally(() => {
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+        });
+    }
 });
 </script>
 @endpush
