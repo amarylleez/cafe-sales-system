@@ -12,6 +12,7 @@ use App\Models\Branch;
 use App\Models\Benchmark;
 use App\Models\BranchStock;
 use App\Models\Notification;
+use App\Models\StockLoss;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -552,8 +553,22 @@ class BranchManagerController extends Controller
             return $item->quantity * ($item->product->cost_price ?? 0);
         });
 
-        // Total stock loss
-        $stockLoss = $unsoldStockLoss + $rejectedSalesLoss;
+        // Get stock losses from StockLoss model (expired, damaged, etc.)
+        $stockLosses = StockLoss::with('product')
+            ->where('branch_id', $branchId)
+            ->whereBetween('created_at', [$startDate, $endDate->copy()->endOfDay()])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Calculate stock losses by type
+        $expiredLoss = $stockLosses->where('loss_type', 'expired')->sum('total_loss');
+        $damagedLoss = $stockLosses->where('loss_type', 'damaged')->sum('total_loss');
+        $manualWriteoffLoss = $stockLosses->where('loss_type', 'manual_writeoff')->sum('total_loss');
+        $otherLoss = $stockLosses->where('loss_type', 'other')->sum('total_loss');
+        $totalRecordedLoss = $stockLosses->sum('total_loss');
+
+        // Total stock loss (includes expired, damaged, unsold, and rejected)
+        $stockLoss = $unsoldStockLoss + $rejectedSalesLoss + $totalRecordedLoss;
 
         // Get potential loss stock for warning display
         $potentialLossStock = BranchStock::with(['product'])
@@ -613,6 +628,13 @@ class BranchManagerController extends Controller
             'rejectedSalesLoss',
             'potentialLossStock',
             'rejectedSales',
+            // Stock loss tracking data
+            'stockLosses',
+            'expiredLoss',
+            'damagedLoss',
+            'manualWriteoffLoss',
+            'otherLoss',
+            'totalRecordedLoss',
             'topProfitableProducts',
             'dailyProfitTrend',
             'dailyBreakdown',
@@ -798,6 +820,22 @@ class BranchManagerController extends Controller
             
             $product->stock_quantity = $branchStock ? $branchStock->stock_quantity : 0;
             $product->is_available = $branchStock ? $branchStock->is_available : true;
+            $product->expiry_date = $branchStock ? $branchStock->expiry_date : null;
+            $product->received_date = $branchStock ? $branchStock->received_date : null;
+            
+            // Calculate expiry status
+            if ($branchStock && $branchStock->expiry_date) {
+                $now = now();
+                if ($branchStock->expiry_date <= $now) {
+                    $product->expiry_status = 'expired';
+                } elseif ($branchStock->expiry_date <= $now->copy()->addHours(2)) {
+                    $product->expiry_status = 'expiring_soon'; // Less than 2 hours
+                } else {
+                    $product->expiry_status = 'fresh';
+                }
+            } else {
+                $product->expiry_status = null; // No expiration for this category
+            }
             
             return $product;
         });

@@ -561,6 +561,22 @@ class StaffController extends Controller
                 $product->stock_quantity = $branchStock ? $branchStock->stock_quantity : 0;
                 $product->is_available = $branchStock ? $branchStock->is_available : true;
                 $product->branch_stock_id = $branchStock ? $branchStock->id : null;
+                $product->expiry_date = $branchStock ? $branchStock->expiry_date : null;
+                $product->received_date = $branchStock ? $branchStock->received_date : null;
+                
+                // Calculate expiry status
+                if ($branchStock && $branchStock->expiry_date) {
+                    $now = now();
+                    if ($branchStock->expiry_date <= $now) {
+                        $product->expiry_status = 'expired';
+                    } elseif ($branchStock->expiry_date <= $now->copy()->addHours(2)) {
+                        $product->expiry_status = 'expiring_soon'; // Less than 2 hours
+                    } else {
+                        $product->expiry_status = 'fresh';
+                    }
+                } else {
+                    $product->expiry_status = null; // No expiration for this category
+                }
                 
                 return $product;
             });
@@ -680,10 +696,21 @@ class StaffController extends Controller
             $user = auth()->user();
             $branchId = $user->branch_id;
             
+            // Get product with category to check expiry hours
+            $product = Product::with('category')->findOrFail($id);
+            
             // Get or create branch stock
             $branchStock = BranchStock::getOrCreate($branchId, $id);
             $branchStock->stock_quantity += $request->quantity;
             $branchStock->received_date = now(); // Update the date when stock is added
+            
+            // Calculate expiry date based on category's expiry_hours
+            if ($product->category && $product->category->expiry_hours) {
+                $branchStock->expiry_date = now()->addHours($product->category->expiry_hours);
+            } else {
+                $branchStock->expiry_date = null; // No expiration for this category
+            }
+            
             $branchStock->save();
 
             // Log the stock addition
@@ -723,12 +750,22 @@ class StaffController extends Controller
             $user = auth()->user();
             $branchId = $user->branch_id;
             
+            // Get product with category to check expiry hours
+            $product = Product::with('category')->findOrFail($id);
+            
             // Get or create branch stock
             $branchStock = BranchStock::getOrCreate($branchId, $id);
             
             if ($request->type === 'add') {
                 $branchStock->stock_quantity += $request->quantity;
                 $branchStock->received_date = now(); // Update the date when stock is added
+                
+                // Calculate expiry date based on category's expiry_hours
+                if ($product->category && $product->category->expiry_hours) {
+                    $branchStock->expiry_date = now()->addHours($product->category->expiry_hours);
+                } else {
+                    $branchStock->expiry_date = null; // No expiration for this category
+                }
             } else {
                 if ($branchStock->stock_quantity < $request->quantity) {
                     return response()->json([

@@ -80,6 +80,16 @@
                             <p class="text-muted mb-1">Stock Loss</p>
                             <h4 class="mb-2 text-danger">RM {{ number_format($stockLoss, 2) }}</h4>
                             <div class="d-flex flex-column gap-1">
+                                @if($expiredLoss > 0)
+                                <span class="badge bg-danger" style="font-size: 0.7rem;">
+                                    <i class="bi bi-calendar-x"></i> Expired: RM {{ number_format($expiredLoss, 2) }}
+                                </span>
+                                @endif
+                                @if($damagedLoss > 0)
+                                <span class="badge bg-secondary" style="font-size: 0.7rem;">
+                                    <i class="bi bi-trash"></i> Damaged: RM {{ number_format($damagedLoss, 2) }}
+                                </span>
+                                @endif
                                 <span class="badge bg-warning text-dark" style="font-size: 0.7rem;">
                                     <i class="bi bi-clock-history"></i> Unsold: RM {{ number_format($unsoldStockLoss, 2) }}
                                 </span>
@@ -698,6 +708,112 @@
                     @if($rejectedSales->count() > 5)
                     <div class="text-center mt-3">
                         <small class="text-muted">Showing 5 of {{ $rejectedSales->count() }} rejected transactions</small>
+                    </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <!-- Stock Losses (Expired/Damaged) -->
+    @if($stockLosses->count() > 0)
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-calendar-x-fill"></i> Stock Losses (Expired & Write-offs)</h5>
+                        <span class="badge bg-danger fs-6">Total: RM {{ number_format($totalRecordedLoss, 2) }}</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <!-- Loss Summary by Type -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <div class="alert alert-danger py-2 mb-0">
+                                <small class="d-block text-muted">Expired</small>
+                                <strong>RM {{ number_format($expiredLoss, 2) }}</strong>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="alert alert-secondary py-2 mb-0">
+                                <small class="d-block text-muted">Damaged</small>
+                                <strong>RM {{ number_format($damagedLoss, 2) }}</strong>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="alert alert-warning py-2 mb-0">
+                                <small class="d-block text-muted">Manual Write-off</small>
+                                <strong>RM {{ number_format($manualWriteoffLoss, 2) }}</strong>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="alert alert-info py-2 mb-0">
+                                <small class="d-block text-muted">Other</small>
+                                <strong>RM {{ number_format($otherLoss, 2) }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Loss Details Table -->
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Type</th>
+                                    <th>Quantity</th>
+                                    <th>Unit Cost</th>
+                                    <th>Total Loss</th>
+                                    <th>Stock Added</th>
+                                    <th>Expired At</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($stockLosses->take(10) as $loss)
+                                <tr>
+                                    <td><strong>{{ $loss->product->name ?? 'Unknown Product' }}</strong></td>
+                                    <td>
+                                        @switch($loss->loss_type)
+                                            @case('expired')
+                                                <span class="badge bg-danger">Expired</span>
+                                                @break
+                                            @case('damaged')
+                                                <span class="badge bg-secondary">Damaged</span>
+                                                @break
+                                            @case('manual_writeoff')
+                                                <span class="badge bg-warning text-dark">Write-off</span>
+                                                @break
+                                            @default
+                                                <span class="badge bg-info">Other</span>
+                                        @endswitch
+                                    </td>
+                                    <td>{{ $loss->quantity }}</td>
+                                    <td>RM {{ number_format($loss->unit_cost, 2) }}</td>
+                                    <td class="text-danger"><strong>RM {{ number_format($loss->total_loss, 2) }}</strong></td>
+                                    <td>
+                                        @if($loss->stock_added_at)
+                                            {{ \Carbon\Carbon::parse($loss->stock_added_at)->format('M d, Y H:i') }}
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if($loss->expired_at)
+                                            {{ \Carbon\Carbon::parse($loss->expired_at)->format('M d, Y H:i') }}
+                                        @else
+                                            <span class="text-muted">-</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    @if($stockLosses->count() > 10)
+                    <div class="text-center mt-3">
+                        <small class="text-muted">Showing 10 of {{ $stockLosses->count() }} stock loss records</small>
                     </div>
                     @endif
                 </div>

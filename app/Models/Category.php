@@ -13,12 +13,22 @@ class Category extends Model
     protected $fillable = [
         'name',
         'description',
+        'expiry_hours',
         'is_active',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'expiry_hours' => 'integer',
     ];
+
+    /**
+     * Check if this category has expiration tracking
+     */
+    public function hasExpiration(): bool
+    {
+        return $this->expiry_hours !== null && $this->expiry_hours > 0;
+    }
 
     /**
      * Get all products in this category

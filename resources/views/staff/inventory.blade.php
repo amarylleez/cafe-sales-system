@@ -112,6 +112,32 @@
                                 {{ $product->stock_quantity }} units
                             </span>
                         </div>
+                        @if($product->expiry_status)
+                        <div class="d-flex justify-content-between align-items-center mt-1">
+                            <span class="text-muted">Expiry:</span>
+                            @if($product->expiry_status === 'expired')
+                                <span class="badge bg-danger">
+                                    <i class="bi bi-exclamation-triangle"></i> Expired
+                                </span>
+                            @elseif($product->expiry_status === 'expiring_soon')
+                                <span class="badge bg-warning text-dark">
+                                    <i class="bi bi-clock"></i> Expiring Soon
+                                </span>
+                            @else
+                                <span class="badge bg-success">
+                                    <i class="bi bi-check-circle"></i> Fresh
+                                </span>
+                            @endif
+                        </div>
+                        @if($product->expiry_date)
+                        <div class="d-flex justify-content-between align-items-center mt-1">
+                            <span class="text-muted small">Expires at:</span>
+                            <span class="small {{ $product->expiry_status === 'expired' ? 'text-danger' : 'text-muted' }}">
+                                {{ \Carbon\Carbon::parse($product->expiry_date)->format('d M, h:i A') }}
+                            </span>
+                        </div>
+                        @endif
+                        @endif
                     </div>
 
                     @if($product->description)
