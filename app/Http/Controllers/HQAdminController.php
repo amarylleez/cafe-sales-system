@@ -760,7 +760,7 @@ class HQAdminController extends Controller
             'email' => 'required|email|unique:users,email',
             'password' => 'required|min:8',
             'role' => 'required|in:hq_admin,branch_manager,staff',
-            'branch_id' => 'nullable|required_unless:role,hq_admin|exists:branches,id'
+            'branch_id' => 'required_unless:role,hq_admin|exists:branches,id'
         ]);
 
         User::create([
