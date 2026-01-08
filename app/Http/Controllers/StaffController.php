@@ -538,8 +538,11 @@ class StaffController extends Controller
         $selectedCategory = request()->get('category');
         $search = request()->get('search');
         
-        // Get products with branch-specific stock
+        // Get products with branch-specific stock - only show products that have BranchStock for this branch
         $productsQuery = Product::with('category')
+            ->whereHas('branchStocks', function($q) use ($branchId) {
+                $q->where('branch_id', $branchId);
+            })
             ->orderBy('name');
         
         // Filter by category if selected
