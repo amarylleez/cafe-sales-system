@@ -675,8 +675,8 @@ document.addEventListener('DOMContentLoaded', function() {
             labels: stockLossTrend.labels,
             datasets: [
                 {
-                    label: 'Unsold Stock Loss',
-                    data: stockLossTrend.unsold,
+                    label: 'Expired Stock Loss',
+                    data: stockLossTrend.expired,
                     borderColor: '#ffc107',
                     backgroundColor: 'rgba(255, 193, 7, 0.1)',
                     tension: 0.4,
@@ -796,8 +796,8 @@ document.addEventListener('DOMContentLoaded', function() {
             labels: stockLossByCategory.map(c => c.category),
             datasets: [
                 {
-                    label: 'Unsold',
-                    data: stockLossByCategory.map(c => c.unsold),
+                    label: 'Expired',
+                    data: stockLossByCategory.map(c => c.expired),
                     backgroundColor: 'rgba(255, 193, 7, 0.7)',
                     borderColor: '#ffc107',
                     borderWidth: 1
@@ -856,8 +856,8 @@ document.addEventListener('DOMContentLoaded', function() {
             labels: stockLossByBranch.map(b => b.branch),
             datasets: [
                 {
-                    label: 'Unsold',
-                    data: stockLossByBranch.map(b => b.unsold),
+                    label: 'Expired',
+                    data: stockLossByBranch.map(b => b.expired),
                     backgroundColor: 'rgba(255, 193, 7, 0.7)',
                     borderColor: '#ffc107',
                     borderWidth: 1

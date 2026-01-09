@@ -1471,7 +1471,7 @@ class HQAdminController extends Controller
     private function getStockLossTrend($branchFilter = null)
     {
         $labels = [];
-        $unsoldData = [];
+        $expiredData = [];
         $rejectedData = [];
         $totalData = [];
 
@@ -1479,19 +1479,15 @@ class HQAdminController extends Controller
             $date = Carbon::now()->subDays($i);
             $labels[] = $date->format('M d');
             
-            // Unsold stock loss for this day
-            $unsoldQuery = BranchStock::with('product')
-                ->where('stock_quantity', '>', 0)
-                ->whereNotNull('received_date')
-                ->whereDate('received_date', $date);
+            // Expired stock loss for this day (from StockLoss model)
+            $expiredQuery = StockLoss::where('loss_type', 'expired')
+                ->whereDate('created_at', $date);
                 
             if ($branchFilter) {
-                $unsoldQuery->where('branch_id', $branchFilter);
+                $expiredQuery->where('branch_id', $branchFilter);
             }
             
-            $unsoldLoss = $unsoldQuery->get()->sum(function($stock) {
-                return $stock->stock_quantity * ($stock->cost_at_purchase ?? $stock->product->cost_price ?? 0);
-            });
+            $expiredLoss = $expiredQuery->sum('total_loss');
             
             // Rejected sales loss for this day
             $rejectedQuery = DailySalesItem::with('product')
@@ -1508,14 +1504,14 @@ class HQAdminController extends Controller
                 return $item->quantity * ($item->product->cost_price ?? 0);
             });
             
-            $unsoldData[] = round($unsoldLoss, 2);
+            $expiredData[] = round($expiredLoss, 2);
             $rejectedData[] = round($rejectedLoss, 2);
-            $totalData[] = round($unsoldLoss + $rejectedLoss, 2);
+            $totalData[] = round($expiredLoss + $rejectedLoss, 2);
         }
 
         return [
             'labels' => $labels,
-            'unsold' => $unsoldData,
+            'expired' => $expiredData,
             'rejected' => $rejectedData,
             'total' => $totalData
         ];
@@ -1530,22 +1526,18 @@ class HQAdminController extends Controller
         $data = [];
 
         foreach ($categories as $category) {
-            // Unsold stock loss
-            $unsoldQuery = BranchStock::with('product')
+            // Expired stock loss (from StockLoss model)
+            $expiredQuery = StockLoss::where('loss_type', 'expired')
                 ->whereHas('product', function($q) use ($category) {
                     $q->where('category_id', $category->id);
                 })
-                ->where('stock_quantity', '>', 0)
-                ->whereNotNull('received_date')
-                ->where('received_date', '<', Carbon::today());
+                ->whereBetween('created_at', [$startDate, $endDate->copy()->endOfDay()]);
                 
             if ($branchFilter) {
-                $unsoldQuery->where('branch_id', $branchFilter);
+                $expiredQuery->where('branch_id', $branchFilter);
             }
             
-            $unsoldLoss = $unsoldQuery->get()->sum(function($stock) {
-                return $stock->stock_quantity * ($stock->cost_at_purchase ?? $stock->product->cost_price ?? 0);
-            });
+            $expiredLoss = $expiredQuery->sum('total_loss');
             
             // Rejected sales loss
             $rejectedQuery = DailySalesItem::with('product')
@@ -1565,12 +1557,12 @@ class HQAdminController extends Controller
                 return $item->quantity * ($item->product->cost_price ?? 0);
             });
             
-            $totalLoss = $unsoldLoss + $rejectedLoss;
+            $totalLoss = $expiredLoss + $rejectedLoss;
             
             if ($totalLoss > 0) {
                 $data[] = [
                     'category' => $category->name,
-                    'unsold' => $unsoldLoss,
+                    'expired' => $expiredLoss,
                     'rejected' => $rejectedLoss,
                     'total' => $totalLoss
                 ];
@@ -1589,16 +1581,11 @@ class HQAdminController extends Controller
         $data = [];
 
         foreach ($branches as $branch) {
-            // Unsold stock loss
-            $unsoldLoss = BranchStock::with('product')
+            // Expired stock loss (from StockLoss model)
+            $expiredLoss = StockLoss::where('loss_type', 'expired')
                 ->where('branch_id', $branch->id)
-                ->where('stock_quantity', '>', 0)
-                ->whereNotNull('received_date')
-                ->where('received_date', '<', Carbon::today())
-                ->get()
-                ->sum(function($stock) {
-                    return $stock->stock_quantity * ($stock->cost_at_purchase ?? $stock->product->cost_price ?? 0);
-                });
+                ->whereBetween('created_at', [$startDate, $endDate->copy()->endOfDay()])
+                ->sum('total_loss');
             
             // Rejected sales loss
             $rejectedLoss = DailySalesItem::with('product')
@@ -1612,12 +1599,12 @@ class HQAdminController extends Controller
                     return $item->quantity * ($item->product->cost_price ?? 0);
                 });
             
-            $totalLoss = $unsoldLoss + $rejectedLoss;
+            $totalLoss = $expiredLoss + $rejectedLoss;
             
             if ($totalLoss > 0) {
                 $data[] = [
                     'branch' => $branch->name,
-                    'unsold' => $unsoldLoss,
+                    'expired' => $expiredLoss,
                     'rejected' => $rejectedLoss,
                     'total' => $totalLoss
                 ];
