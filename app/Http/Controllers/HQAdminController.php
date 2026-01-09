@@ -283,24 +283,6 @@ class HQAdminController extends Controller
         // Top 5 profitable products
         $topProfitableProducts = $productProfitData->take(5);
 
-        // Calculate stock loss from unsold items (items stocked more than 1 day ago that haven't been sold)
-        $stockLossQuery = BranchStock::with('product')
-            ->where('stock_quantity', '>', 0)
-            ->where(function($q) {
-                // Stock that was received yesterday or earlier (unsold for at least 1 day)
-                $q->whereNotNull('received_date')
-                  ->where('received_date', '<', Carbon::today());
-            });
-            
-        if ($branchFilter) {
-            $stockLossQuery->where('branch_id', $branchFilter);
-        }
-        
-        $unsoldStock = $stockLossQuery->get();
-        $unsoldStockLoss = $unsoldStock->sum(function($stock) {
-            return $stock->stock_quantity * ($stock->cost_at_purchase ?? $stock->product->cost_price ?? 0);
-        });
-
         // Calculate loss from rejected transactions (stock already deducted but sale not counted)
         $rejectedSalesQuery = DailySalesItem::with(['product', 'dailySale'])
             ->whereHas('dailySale', function($q) use ($startDate, $endDate, $branchFilter) {
@@ -317,8 +299,8 @@ class HQAdminController extends Controller
             return $item->quantity * ($item->product->cost_price ?? 0);
         });
 
-        // Total stock loss = unsold stock + rejected sales
-        $stockLoss = $unsoldStockLoss + $rejectedSalesLoss;
+        // Total stock loss = rejected sales only (expired tracked separately in StockLoss model)
+        $stockLoss = $rejectedSalesLoss;
 
         // Get potential loss stock (items unsold for more than 1 day - for warning display)
         $potentialLossQuery = BranchStock::with(['product', 'branch'])
@@ -400,7 +382,6 @@ class HQAdminController extends Controller
             'netProfit',
             'profitMargin',
             'stockLoss',
-            'unsoldStockLoss',
             'rejectedSalesLoss',
             'potentialLossStock',
             'rejectedSales',

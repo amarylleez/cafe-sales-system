@@ -60,12 +60,11 @@
                             <p class="text-muted mb-1">Stock Loss</p>
                             <h4 class="mb-2 text-danger">RM {{ number_format($stockLoss, 2) }}</h4>
                             <div class="d-flex flex-column gap-1">
-                                <span class="badge bg-warning text-dark" style="font-size: 0.7rem;">
-                                    <i class="bi bi-clock-history"></i> Unsold: RM {{ number_format($unsoldStockLoss, 2) }}
-                                </span>
+                                @if($rejectedSalesLoss > 0)
                                 <span class="badge bg-danger" style="font-size: 0.7rem;">
                                     <i class="bi bi-x-circle"></i> Rejected: RM {{ number_format($rejectedSalesLoss, 2) }}
                                 </span>
+                                @endif
                             </div>
                         </div>
                         <div class="icon-box bg-danger bg-opacity-10 rounded-circle p-3">
@@ -235,13 +234,6 @@
                         <canvas id="stockLossBreakdownChart"></canvas>
                     </div>
                     <div class="mt-3 pt-3 border-top">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <div class="d-flex align-items-center">
-                                <span class="badge bg-warning text-dark me-2" style="width: 12px; height: 12px;"></span>
-                                <span>Unsold Stock</span>
-                            </div>
-                            <strong class="text-warning">RM {{ number_format($unsoldStockLoss, 2) }}</strong>
-                        </div>
                         <div class="d-flex justify-content-between align-items-center">
                             <div class="d-flex align-items-center">
                                 <span class="badge bg-danger me-2" style="width: 12px; height: 12px;"></span>
@@ -738,22 +730,19 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Stock Loss Breakdown Pie Chart
-    const unsoldLoss = {{ $unsoldStockLoss }};
     const rejectedLoss = {{ $rejectedSalesLoss }};
     const stockLossBreakdownCtx = document.getElementById('stockLossBreakdownChart');
     
     new Chart(stockLossBreakdownCtx, {
         type: 'doughnut',
         data: {
-            labels: ['Unsold Stock', 'Rejected Sales'],
+            labels: ['Rejected Sales'],
             datasets: [{
-                data: [unsoldLoss, rejectedLoss],
+                data: [rejectedLoss],
                 backgroundColor: [
-                    'rgba(255, 193, 7, 0.8)',
                     'rgba(220, 53, 69, 0.8)'
                 ],
                 borderColor: [
-                    '#ffc107',
                     '#dc3545'
                 ],
                 borderWidth: 2
@@ -771,9 +760,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         label: function(context) {
                             const label = context.label || '';
                             const value = context.parsed || 0;
-                            const total = unsoldLoss + rejectedLoss;
-                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                            return label + ': RM ' + value.toFixed(2) + ' (' + percentage + '%)';
+                            return label + ': RM ' + value.toFixed(2);
                         }
                     }
                 }

@@ -528,18 +528,6 @@ class BranchManagerController extends Controller
         // Top 5 profitable products
         $topProfitableProducts = $productProfitData->take(5);
 
-        // Calculate stock loss from unsold items
-        $unsoldStock = BranchStock::with('product')
-            ->where('branch_id', $branchId)
-            ->where('stock_quantity', '>', 0)
-            ->whereNotNull('received_date')
-            ->where('received_date', '<', Carbon::today())
-            ->get();
-            
-        $unsoldStockLoss = $unsoldStock->sum(function($stock) {
-            return $stock->stock_quantity * ($stock->cost_at_purchase ?? $stock->product->cost_price ?? 0);
-        });
-
         // Calculate loss from rejected transactions
         $rejectedItems = DailySalesItem::with(['product', 'dailySale'])
             ->whereHas('dailySale', function($q) use ($startDate, $endDate, $branchId) {
@@ -564,8 +552,8 @@ class BranchManagerController extends Controller
         $expiredLoss = $stockLosses->where('loss_type', 'expired')->sum('total_loss');
         $totalRecordedLoss = $stockLosses->sum('total_loss');
 
-        // Total stock loss (includes expired, damaged, unsold, and rejected)
-        $stockLoss = $unsoldStockLoss + $rejectedSalesLoss + $totalRecordedLoss;
+        // Total stock loss (expired + rejected)
+        $stockLoss = $rejectedSalesLoss + $totalRecordedLoss;
 
         // Get potential loss stock for warning display
         $potentialLossStock = BranchStock::with(['product'])
@@ -621,7 +609,6 @@ class BranchManagerController extends Controller
             'netProfit',
             'profitMargin',
             'stockLoss',
-            'unsoldStockLoss',
             'rejectedSalesLoss',
             'potentialLossStock',
             'rejectedSales',

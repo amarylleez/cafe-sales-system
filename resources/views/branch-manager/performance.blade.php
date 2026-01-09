@@ -85,12 +85,11 @@
                                     <i class="bi bi-calendar-x"></i> Expired: RM {{ number_format($expiredLoss, 2) }}
                                 </span>
                                 @endif
-                                <span class="badge bg-warning text-dark" style="font-size: 0.7rem;">
-                                    <i class="bi bi-clock-history"></i> Unsold: RM {{ number_format($unsoldStockLoss, 2) }}
-                                </span>
+                                @if($rejectedSalesLoss > 0)
                                 <span class="badge bg-danger" style="font-size: 0.7rem;">
                                     <i class="bi bi-x-circle"></i> Rejected: RM {{ number_format($rejectedSalesLoss, 2) }}
                                 </span>
+                                @endif
                             </div>
                         </div>
                         <div class="icon-box bg-danger bg-opacity-10 rounded-circle p-3">
