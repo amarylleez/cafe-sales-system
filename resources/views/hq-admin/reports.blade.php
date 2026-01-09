@@ -60,6 +60,7 @@
                                 <option value="pending">Pending Verification</option>
                                 <option value="verified">Verified</option>
                                 <option value="completed">Completed</option>
+                                <option value="rejected">Rejected</option>
                             </select>
                         </div>
                         <div class="col-md-12">
@@ -158,6 +159,8 @@
                                         <span class="badge bg-success"><i class="bi bi-check-circle"></i> Completed</span>
                                         @elseif($report->status === 'verified')
                                         <span class="badge bg-info"><i class="bi bi-shield-check"></i> Verified</span>
+                                        @elseif($report->status === 'rejected')
+                                        <span class="badge bg-danger"><i class="bi bi-x-circle"></i> Rejected</span>
                                         @else
                                         <span class="badge bg-warning"><i class="bi bi-clock"></i> Pending</span>
                                         @endif
@@ -293,7 +296,7 @@ function viewReport(reportId) {
                         <div class="row">
                             <div class="col-6"><strong>Status:</strong></div>
                             <div class="col-6 text-end">
-                                <span class="badge bg-${report.status === 'completed' ? 'success' : (report.status === 'verified' ? 'info' : 'warning')}">
+                                <span class="badge bg-${report.status === 'completed' ? 'success' : (report.status === 'verified' ? 'info' : (report.status === 'rejected' ? 'danger' : 'warning'))}">
                                     ${report.status.toUpperCase()}
                                 </span>
                             </div>
