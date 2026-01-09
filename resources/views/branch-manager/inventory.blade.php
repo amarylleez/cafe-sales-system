@@ -232,8 +232,8 @@
                             <input type="number" class="form-control" id="productPrice" name="price" step="0.01" min="0" required>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label for="productCostPrice" class="form-label">Cost Price (RM)</label>
-                            <input type="number" class="form-control" id="productCostPrice" name="cost_price" step="0.01" min="0" placeholder="Auto-calculate if empty">
+                            <label for="productCostPrice" class="form-label">Cost Price (RM) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="productCostPrice" name="cost_price" step="0.01" min="0" required>
                         </div>
                     </div>
                     <div class="mb-3">
