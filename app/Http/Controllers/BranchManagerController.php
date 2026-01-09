@@ -1115,9 +1115,10 @@ class BranchManagerController extends Controller
         $user = auth()->user();
         $branchId = $user->branch_id;
 
-        // Get all pending (unverified) sales for this branch
+        // Get all pending (unverified) sales for this branch, excluding rejected ones
         $pendingSales = DailySale::where('branch_id', $branchId)
             ->whereNull('verified_by')
+            ->where('status', '!=', 'rejected')
             ->get();
 
         $count = $pendingSales->count();
