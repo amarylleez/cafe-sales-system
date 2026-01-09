@@ -1031,6 +1031,7 @@ class BranchManagerController extends Controller
                     'unit_cost' => $unitCost,
                     'total_loss' => $lossAmount,
                     'loss_type' => 'expired',
+                    'loss_date' => now(),
                     'stock_added_at' => $stock->received_date,
                     'expired_at' => $stock->expiry_date,
                     'notes' => 'Cleared via Clear Expired Stock button by ' . $user->name,
