@@ -8,10 +8,13 @@
     <div class="row mb-4">
         <div class="col-12">
             <div class="card shadow-sm">
-                <div class="card-header" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
+                <div class="card-header d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);">
                     <h5 class="mb-0 text-white">
                         <i class="bi bi-graph-up-arrow"></i> Branch Performance Analytics
                     </h5>
+                    <a href="{{ route('hq-admin.analytics.export-pdf', request()->query()) }}" class="btn btn-light btn-sm">
+                        <i class="bi bi-file-earmark-pdf"></i> Export to PDF
+                    </a>
                 </div>
                 <div class="card-body">
                     <p class="text-muted mb-0">Analyze and compare branch performance across all locations.</p>

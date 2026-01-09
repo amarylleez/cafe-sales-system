@@ -410,6 +410,290 @@ class HQAdminController extends Controller
     }
 
     /**
+     * Export Analytics to PDF
+     */
+    public function exportAnalyticsPdf(Request $request)
+    {
+        // Date range handling (same as analytics method)
+        $dateRange = $request->get('date_range', 'this_month');
+        $branchFilter = $request->get('branch_id');
+        
+        switch ($dateRange) {
+            case 'today':
+                $startDate = Carbon::today();
+                $endDate = Carbon::today();
+                break;
+            case 'this_week':
+                $startDate = Carbon::now()->startOfWeek();
+                $endDate = Carbon::now()->endOfWeek();
+                break;
+            case 'this_month':
+                $startDate = Carbon::now()->startOfMonth();
+                $endDate = Carbon::now()->endOfMonth();
+                break;
+            case 'last_month':
+                $startDate = Carbon::now()->subMonth()->startOfMonth();
+                $endDate = Carbon::now()->subMonth()->endOfMonth();
+                break;
+            case 'this_year':
+                $startDate = Carbon::now()->startOfYear();
+                $endDate = Carbon::now()->endOfYear();
+                break;
+            default:
+                $startDate = Carbon::now()->startOfMonth();
+                $endDate = Carbon::now()->endOfMonth();
+        }
+
+        // Reuse analytics data calculations
+        $salesQuery = DailySalesItem::with(['product', 'dailySale'])
+            ->whereHas('dailySale', function($q) use ($startDate, $endDate, $branchFilter) {
+                $q->whereBetween('sale_date', [$startDate, $endDate])
+                  ->where('status', 'completed');
+                  
+                if ($branchFilter) {
+                    $q->where('branch_id', $branchFilter);
+                }
+            });
+        
+        $salesItems = $salesQuery->get();
+        $totalRevenue = $salesItems->sum('total');
+        $totalCost = $salesItems->sum(function($item) {
+            return $item->quantity * ($item->product->cost_price ?? 0);
+        });
+
+        // Product profit data
+        $productProfitData = [];
+        $itemsByProduct = $salesItems->groupBy('product_id');
+        foreach ($itemsByProduct as $productId => $items) {
+            $product = Product::find($productId);
+            if (!$product) continue;
+            
+            $revenue = $items->sum('total');
+            $cost = $items->sum(function($item) use ($product) {
+                return $item->quantity * ($product->cost_price ?? 0);
+            });
+            
+            $productProfitData[] = [
+                'id' => $productId,
+                'name' => $product->name,
+                'quantity' => $items->sum('quantity'),
+                'revenue' => $revenue,
+                'cost' => $cost,
+                'profit' => $revenue - $cost
+            ];
+        }
+        $topProfitableProducts = collect($productProfitData)->sortByDesc('profit')->take(5)->values();
+
+        $grossProfit = $totalRevenue - $totalCost;
+        $profitMargin = $totalRevenue > 0 ? ($grossProfit / $totalRevenue) * 100 : 0;
+
+        // Stock losses
+        $rejectedItems = DailySalesItem::with(['product', 'dailySale'])
+            ->whereHas('dailySale', function($q) use ($startDate, $endDate, $branchFilter) {
+                $q->whereBetween('sale_date', [$startDate, $endDate])
+                  ->where('status', 'rejected');
+                if ($branchFilter) {
+                    $q->where('branch_id', $branchFilter);
+                }
+            })
+            ->get();
+        
+        $rejectedSalesLoss = $rejectedItems->sum(function($item) {
+            return $item->quantity * ($item->product->cost_price ?? 0);
+        });
+
+        $stockLossQuery = StockLoss::where('loss_type', 'expired')
+            ->whereBetween('created_at', [$startDate, $endDate->copy()->endOfDay()]);
+        if ($branchFilter) {
+            $stockLossQuery->where('branch_id', $branchFilter);
+        }
+        $expiredLoss = $stockLossQuery->sum('total_loss');
+
+        $stockLoss = $expiredLoss + $rejectedSalesLoss;
+
+        // Get rejected sales
+        $rejectedSalesQuery = DailySale::with(['items.product', 'branch', 'staff'])
+            ->whereBetween('sale_date', [$startDate, $endDate])
+            ->where('status', 'rejected');
+        if ($branchFilter) {
+            $rejectedSalesQuery->where('branch_id', $branchFilter);
+        }
+        $rejectedSales = $rejectedSalesQuery->orderBy('sale_date', 'desc')->get();
+
+        // Stock Loss by Category and Branch
+        $stockLossByCategory = $this->getStockLossByCategory($branchFilter, $startDate, $endDate);
+        $stockLossByBranch = $this->getStockLossByBranch($startDate, $endDate);
+        
+        // Monthly sales data for chart
+        $monthlyProfitTrend = $this->getMonthlyProfitTrend($branchFilter);
+
+        // Generate QuickChart URLs
+        $monthlySalesChartUrl = $this->generateMonthlySalesChartUrl($monthlyProfitTrend);
+        $lossBreakdownChartUrl = $this->generateLossBreakdownChartUrl($expiredLoss, $rejectedSalesLoss);
+        $stockLossByCategoryChartUrl = $this->generateStockLossByCategoryChartUrl($stockLossByCategory);
+        $stockLossByBranchChartUrl = $this->generateStockLossByBranchChartUrl($stockLossByBranch);
+
+        $pdf = PDF::loadView('hq-admin.analytics-pdf', compact(
+            'startDate',
+            'endDate',
+            'totalRevenue',
+            'totalCost',
+            'grossProfit',
+            'profitMargin',
+            'stockLoss',
+            'expiredLoss',
+            'rejectedSalesLoss',
+            'topProfitableProducts',
+            'stockLossByCategory',
+            'stockLossByBranch',
+            'rejectedSales',
+            'monthlySalesChartUrl',
+            'lossBreakdownChartUrl',
+            'stockLossByCategoryChartUrl',
+            'stockLossByBranchChartUrl'
+        ));
+
+        $pdf->setPaper('A4', 'portrait');
+        
+        return $pdf->download('analytics-report-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    /**
+     * Generate QuickChart URL for monthly sales chart
+     */
+    private function generateMonthlySalesChartUrl($monthlyData)
+    {
+        if (empty($monthlyData['labels'])) return null;
+
+        $chartConfig = [
+            'type' => 'line',
+            'data' => [
+                'labels' => $monthlyData['labels'],
+                'datasets' => [
+                    [
+                        'label' => 'Revenue',
+                        'data' => $monthlyData['revenue'],
+                        'borderColor' => '#0d6efd',
+                        'backgroundColor' => 'rgba(13, 110, 253, 0.1)',
+                        'fill' => true
+                    ],
+                    [
+                        'label' => 'Profit',
+                        'data' => $monthlyData['profit'],
+                        'borderColor' => '#198754',
+                        'backgroundColor' => 'rgba(25, 135, 84, 0.1)',
+                        'fill' => true
+                    ]
+                ]
+            ],
+            'options' => [
+                'responsive' => true,
+                'plugins' => ['legend' => ['display' => true]]
+            ]
+        ];
+
+        return 'https://quickchart.io/chart?c=' . urlencode(json_encode($chartConfig)) . '&w=600&h=250';
+    }
+
+    /**
+     * Generate QuickChart URL for loss breakdown pie chart
+     */
+    private function generateLossBreakdownChartUrl($expiredLoss, $rejectedLoss)
+    {
+        if ($expiredLoss == 0 && $rejectedLoss == 0) return null;
+
+        $chartConfig = [
+            'type' => 'doughnut',
+            'data' => [
+                'labels' => ['Expired Stock', 'Rejected Sales'],
+                'datasets' => [[
+                    'data' => [$expiredLoss, $rejectedLoss],
+                    'backgroundColor' => ['#ffc107', '#dc3545']
+                ]]
+            ],
+            'options' => [
+                'plugins' => ['legend' => ['display' => true, 'position' => 'right']]
+            ]
+        ];
+
+        return 'https://quickchart.io/chart?c=' . urlencode(json_encode($chartConfig)) . '&w=400&h=200';
+    }
+
+    /**
+     * Generate QuickChart URL for stock loss by category chart
+     */
+    private function generateStockLossByCategoryChartUrl($stockLossByCategory)
+    {
+        if ($stockLossByCategory->isEmpty()) return null;
+
+        $labels = $stockLossByCategory->pluck('category')->toArray();
+        $expiredData = $stockLossByCategory->pluck('expired')->toArray();
+        $rejectedData = $stockLossByCategory->pluck('rejected')->toArray();
+
+        $chartConfig = [
+            'type' => 'bar',
+            'data' => [
+                'labels' => $labels,
+                'datasets' => [
+                    [
+                        'label' => 'Expired',
+                        'data' => $expiredData,
+                        'backgroundColor' => '#ffc107'
+                    ],
+                    [
+                        'label' => 'Rejected',
+                        'data' => $rejectedData,
+                        'backgroundColor' => '#dc3545'
+                    ]
+                ]
+            ],
+            'options' => [
+                'scales' => ['x' => ['stacked' => true], 'y' => ['stacked' => true]],
+                'plugins' => ['legend' => ['display' => true]]
+            ]
+        ];
+
+        return 'https://quickchart.io/chart?c=' . urlencode(json_encode($chartConfig)) . '&w=600&h=200';
+    }
+
+    /**
+     * Generate QuickChart URL for stock loss by branch chart
+     */
+    private function generateStockLossByBranchChartUrl($stockLossByBranch)
+    {
+        if ($stockLossByBranch->isEmpty()) return null;
+
+        $labels = $stockLossByBranch->pluck('branch')->toArray();
+        $expiredData = $stockLossByBranch->pluck('expired')->toArray();
+        $rejectedData = $stockLossByBranch->pluck('rejected')->toArray();
+
+        $chartConfig = [
+            'type' => 'bar',
+            'data' => [
+                'labels' => $labels,
+                'datasets' => [
+                    [
+                        'label' => 'Expired',
+                        'data' => $expiredData,
+                        'backgroundColor' => '#ffc107'
+                    ],
+                    [
+                        'label' => 'Rejected',
+                        'data' => $rejectedData,
+                        'backgroundColor' => '#dc3545'
+                    ]
+                ]
+            ],
+            'options' => [
+                'scales' => ['x' => ['stacked' => true], 'y' => ['stacked' => true]],
+                'plugins' => ['legend' => ['display' => true]]
+            ]
+        ];
+
+        return 'https://quickchart.io/chart?c=' . urlencode(json_encode($chartConfig)) . '&w=600&h=200';
+    }
+
+    /**
      * Show branch-specific analytics (like Branch Manager dashboard)
      */
     public function branchAnalytics($id)

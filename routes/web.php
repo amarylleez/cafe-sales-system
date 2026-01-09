@@ -38,6 +38,7 @@ Route::middleware(['auth'])->prefix('hq-admin')->name('hq-admin.')->group(functi
     
     // Analytics
     Route::get('/analytics', [HQAdminController::class, 'analytics'])->name('analytics');
+    Route::get('/analytics/export-pdf', [HQAdminController::class, 'exportAnalyticsPdf'])->name('analytics.export-pdf');
     Route::get('/analytics/branch/{id}', [HQAdminController::class, 'branchAnalytics'])->name('analytics.branch');
     
     // Manage Staff
