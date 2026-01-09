@@ -299,8 +299,18 @@ class HQAdminController extends Controller
             return $item->quantity * ($item->product->cost_price ?? 0);
         });
 
-        // Total stock loss = rejected sales only (expired tracked separately in StockLoss model)
-        $stockLoss = $rejectedSalesLoss;
+        // Get expired stock losses from StockLoss model
+        $stockLossQuery = StockLoss::where('loss_type', 'expired')
+            ->whereBetween('created_at', [$startDate, $endDate->copy()->endOfDay()]);
+        
+        if ($branchFilter) {
+            $stockLossQuery->where('branch_id', $branchFilter);
+        }
+        
+        $expiredLoss = $stockLossQuery->sum('total_loss');
+
+        // Total stock loss = expired + rejected
+        $stockLoss = $expiredLoss + $rejectedSalesLoss;
 
         // Get potential loss stock (items unsold for more than 1 day - for warning display)
         $potentialLossQuery = BranchStock::with(['product', 'branch'])
@@ -382,6 +392,7 @@ class HQAdminController extends Controller
             'netProfit',
             'profitMargin',
             'stockLoss',
+            'expiredLoss',
             'rejectedSalesLoss',
             'potentialLossStock',
             'rejectedSales',
