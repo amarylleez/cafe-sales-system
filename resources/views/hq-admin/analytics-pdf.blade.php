@@ -19,18 +19,18 @@
             page-break-after: always;
         }
         .header {
-            background: linear-gradient(135deg, #423A8E 0%, #00CCCD 100%);
+            background: #423A8E;
             color: white;
             padding: 20px;
             text-align: center;
             margin-bottom: 20px;
         }
         .header h1 {
-            font-size: 22px;
+            font-size: 20px;
             margin-bottom: 5px;
         }
         .header p {
-            font-size: 12px;
+            font-size: 11px;
             opacity: 0.9;
         }
         .summary-cards {
@@ -47,12 +47,12 @@
             background: #f8f9fa;
         }
         .summary-card .label {
-            font-size: 10px;
+            font-size: 9px;
             color: #666;
             text-transform: uppercase;
         }
         .summary-card .value {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
             margin-top: 5px;
         }
@@ -61,24 +61,24 @@
         .summary-card .value.danger { color: #dc3545; }
         .summary-card .value.info { color: #0dcaf0; }
         .section {
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
         .section-title {
             background: #423A8E;
             color: white;
             padding: 8px 15px;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: bold;
             margin-bottom: 10px;
         }
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
         th, td {
             border: 1px solid #ddd;
-            padding: 8px;
+            padding: 6px 8px;
             text-align: left;
             font-size: 10px;
         }
@@ -98,15 +98,8 @@
         }
         .text-success { color: #198754; }
         .text-danger { color: #dc3545; }
-        .text-warning { color: #ffc107; }
-        .chart-container {
-            text-align: center;
-            margin: 15px 0;
-        }
-        .chart-container img {
-            max-width: 100%;
-            height: auto;
-        }
+        .text-warning { color: #b8860b; }
+        .text-primary { color: #0d6efd; }
         .loss-breakdown {
             display: table;
             width: 100%;
@@ -115,7 +108,7 @@
         .loss-item {
             display: table-cell;
             width: 50%;
-            padding: 10px;
+            padding: 12px;
             text-align: center;
             border: 1px solid #ddd;
         }
@@ -125,32 +118,48 @@
         .loss-item.rejected {
             background: #f8d7da;
         }
+        .loss-item .label {
+            font-size: 10px;
+            color: #666;
+        }
+        .loss-item .value {
+            font-size: 14px;
+            font-weight: bold;
+            margin-top: 3px;
+        }
         .footer {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
             text-align: center;
             font-size: 9px;
             color: #999;
-            padding: 10px;
+            padding: 15px 0;
             border-top: 1px solid #ddd;
+            margin-top: 20px;
         }
-        .two-column {
-            display: table;
-            width: 100%;
+        .net-profit-box {
+            background: #d4edda;
+            border: 2px solid #198754;
+            padding: 15px;
+            text-align: center;
+            margin-bottom: 20px;
         }
-        .two-column .column {
-            display: table-cell;
-            width: 50%;
-            vertical-align: top;
-            padding: 0 10px;
+        .net-profit-box .label {
+            font-size: 11px;
+            color: #155724;
         }
-        .two-column .column:first-child {
-            padding-left: 0;
+        .net-profit-box .value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #198754;
         }
-        .two-column .column:last-child {
-            padding-right: 0;
+        .net-profit-box.negative {
+            background: #f8d7da;
+            border-color: #dc3545;
+        }
+        .net-profit-box.negative .label {
+            color: #721c24;
+        }
+        .net-profit-box.negative .value {
+            color: #dc3545;
         }
     </style>
 </head>
@@ -169,12 +178,12 @@
             <div class="value primary">RM {{ number_format($totalRevenue, 2) }}</div>
         </div>
         <div class="summary-card">
-            <div class="label">Gross Profit</div>
-            <div class="value success">RM {{ number_format($grossProfit, 2) }}</div>
+            <div class="label">Total Cost</div>
+            <div class="value">RM {{ number_format($totalCost, 2) }}</div>
         </div>
         <div class="summary-card">
-            <div class="label">Stock Loss</div>
-            <div class="value danger">RM {{ number_format($stockLoss, 2) }}</div>
+            <div class="label">Gross Profit</div>
+            <div class="value success">RM {{ number_format($grossProfit, 2) }}</div>
         </div>
         <div class="summary-card">
             <div class="label">Profit Margin</div>
@@ -182,47 +191,44 @@
         </div>
     </div>
 
-    <!-- Loss Breakdown -->
+    <!-- Stock Loss Breakdown -->
     <div class="section">
         <div class="section-title">Stock Loss Breakdown</div>
         <div class="loss-breakdown">
             <div class="loss-item expired">
-                <div class="label">Expired Stock</div>
-                <div class="value text-warning" style="font-size: 14px; font-weight: bold;">RM {{ number_format($expiredLoss, 2) }}</div>
+                <div class="label">Expired Stock Loss</div>
+                <div class="value text-warning">RM {{ number_format($expiredLoss, 2) }}</div>
             </div>
             <div class="loss-item rejected">
-                <div class="label">Rejected Sales</div>
-                <div class="value text-danger" style="font-size: 14px; font-weight: bold;">RM {{ number_format($rejectedSalesLoss, 2) }}</div>
+                <div class="label">Rejected Sales Loss</div>
+                <div class="value text-danger">RM {{ number_format($rejectedSalesLoss, 2) }}</div>
             </div>
         </div>
+        <table>
+            <tr>
+                <th style="width: 70%;">Loss Type</th>
+                <th class="text-right" style="width: 30%;">Amount</th>
+            </tr>
+            <tr>
+                <td>Expired Stock</td>
+                <td class="text-right text-warning">RM {{ number_format($expiredLoss, 2) }}</td>
+            </tr>
+            <tr>
+                <td>Rejected Sales</td>
+                <td class="text-right text-danger">RM {{ number_format($rejectedSalesLoss, 2) }}</td>
+            </tr>
+            <tr style="background: #f0f0f0; font-weight: bold;">
+                <td><strong>Total Stock Loss</strong></td>
+                <td class="text-right text-danger"><strong>RM {{ number_format($stockLoss, 2) }}</strong></td>
+            </tr>
+        </table>
     </div>
 
-    <!-- Monthly Sales Chart -->
-    @if($monthlySalesChartUrl)
-    <div class="section">
-        <div class="section-title">Monthly Sales Comparison (Last 6 Months)</div>
-        <div class="chart-container">
-            <img src="{{ $monthlySalesChartUrl }}" alt="Monthly Sales Chart" style="max-height: 200px;">
-        </div>
-    </div>
-    @endif
-
-    <!-- Loss Breakdown Pie Chart -->
-    @if($lossBreakdownChartUrl)
-    <div class="section">
-        <div class="section-title">Loss Distribution</div>
-        <div class="chart-container">
-            <img src="{{ $lossBreakdownChartUrl }}" alt="Loss Breakdown Chart" style="max-height: 180px;">
-        </div>
-    </div>
-    @endif
-
-    <div class="page-break"></div>
-
-    <!-- Page 2 Header -->
-    <div class="header" style="margin-top: 0;">
-        <h1>Detailed Analytics Data</h1>
-        <p>Period: {{ $startDate->format('M d, Y') }} - {{ $endDate->format('M d, Y') }}</p>
+    <!-- Net Profit -->
+    @php $netProfit = $grossProfit - $stockLoss; @endphp
+    <div class="net-profit-box {{ $netProfit < 0 ? 'negative' : '' }}">
+        <div class="label">Net Profit (After Stock Loss)</div>
+        <div class="value">RM {{ number_format($netProfit, 2) }}</div>
     </div>
 
     <!-- Top Profitable Products -->
@@ -233,10 +239,10 @@
                 <tr>
                     <th style="width: 5%;">#</th>
                     <th style="width: 35%;">Product</th>
-                    <th class="text-right" style="width: 15%;">Qty Sold</th>
-                    <th class="text-right" style="width: 15%;">Revenue</th>
-                    <th class="text-right" style="width: 15%;">Cost</th>
-                    <th class="text-right" style="width: 15%;">Profit</th>
+                    <th class="text-right" style="width: 12%;">Qty Sold</th>
+                    <th class="text-right" style="width: 16%;">Revenue</th>
+                    <th class="text-right" style="width: 16%;">Cost</th>
+                    <th class="text-right" style="width: 16%;">Profit</th>
                 </tr>
             </thead>
             <tbody>
@@ -258,26 +264,35 @@
         </table>
     </div>
 
+    <div class="page-break"></div>
+
+    <!-- Page 2 Header -->
+    <div class="header">
+        <h1>Detailed Loss Analysis</h1>
+        <p>Period: {{ $startDate->format('M d, Y') }} - {{ $endDate->format('M d, Y') }}</p>
+    </div>
+
     <!-- Stock Loss by Category -->
     @if($stockLossByCategory->count() > 0)
     <div class="section">
         <div class="section-title">Stock Loss by Category</div>
-        @if($stockLossByCategoryChartUrl)
-        <div class="chart-container">
-            <img src="{{ $stockLossByCategoryChartUrl }}" alt="Stock Loss by Category" style="max-height: 180px;">
-        </div>
-        @endif
         <table>
             <thead>
                 <tr>
-                    <th>Category</th>
-                    <th class="text-right">Expired</th>
-                    <th class="text-right">Rejected</th>
-                    <th class="text-right">Total Loss</th>
+                    <th style="width: 40%;">Category</th>
+                    <th class="text-right" style="width: 20%;">Expired</th>
+                    <th class="text-right" style="width: 20%;">Rejected</th>
+                    <th class="text-right" style="width: 20%;">Total Loss</th>
                 </tr>
             </thead>
             <tbody>
+                @php $categoryTotalExpired = 0; $categoryTotalRejected = 0; $categoryTotal = 0; @endphp
                 @foreach($stockLossByCategory as $category)
+                @php 
+                    $categoryTotalExpired += $category['expired'];
+                    $categoryTotalRejected += $category['rejected'];
+                    $categoryTotal += $category['total'];
+                @endphp
                 <tr>
                     <td>{{ $category['category'] }}</td>
                     <td class="text-right text-warning">RM {{ number_format($category['expired'], 2) }}</td>
@@ -285,6 +300,12 @@
                     <td class="text-right"><strong>RM {{ number_format($category['total'], 2) }}</strong></td>
                 </tr>
                 @endforeach
+                <tr style="background: #f0f0f0; font-weight: bold;">
+                    <td><strong>Total</strong></td>
+                    <td class="text-right text-warning"><strong>RM {{ number_format($categoryTotalExpired, 2) }}</strong></td>
+                    <td class="text-right text-danger"><strong>RM {{ number_format($categoryTotalRejected, 2) }}</strong></td>
+                    <td class="text-right"><strong>RM {{ number_format($categoryTotal, 2) }}</strong></td>
+                </tr>
             </tbody>
         </table>
     </div>
@@ -294,22 +315,23 @@
     @if($stockLossByBranch->count() > 0)
     <div class="section">
         <div class="section-title">Stock Loss by Branch</div>
-        @if($stockLossByBranchChartUrl)
-        <div class="chart-container">
-            <img src="{{ $stockLossByBranchChartUrl }}" alt="Stock Loss by Branch" style="max-height: 180px;">
-        </div>
-        @endif
         <table>
             <thead>
                 <tr>
-                    <th>Branch</th>
-                    <th class="text-right">Expired</th>
-                    <th class="text-right">Rejected</th>
-                    <th class="text-right">Total Loss</th>
+                    <th style="width: 40%;">Branch</th>
+                    <th class="text-right" style="width: 20%;">Expired</th>
+                    <th class="text-right" style="width: 20%;">Rejected</th>
+                    <th class="text-right" style="width: 20%;">Total Loss</th>
                 </tr>
             </thead>
             <tbody>
+                @php $branchTotalExpired = 0; $branchTotalRejected = 0; $branchTotal = 0; @endphp
                 @foreach($stockLossByBranch as $branch)
+                @php 
+                    $branchTotalExpired += $branch['expired'];
+                    $branchTotalRejected += $branch['rejected'];
+                    $branchTotal += $branch['total'];
+                @endphp
                 <tr>
                     <td>{{ $branch['branch'] }}</td>
                     <td class="text-right text-warning">RM {{ number_format($branch['expired'], 2) }}</td>
@@ -317,6 +339,12 @@
                     <td class="text-right"><strong>RM {{ number_format($branch['total'], 2) }}</strong></td>
                 </tr>
                 @endforeach
+                <tr style="background: #f0f0f0; font-weight: bold;">
+                    <td><strong>Total</strong></td>
+                    <td class="text-right text-warning"><strong>RM {{ number_format($branchTotalExpired, 2) }}</strong></td>
+                    <td class="text-right text-danger"><strong>RM {{ number_format($branchTotalRejected, 2) }}</strong></td>
+                    <td class="text-right"><strong>RM {{ number_format($branchTotal, 2) }}</strong></td>
+                </tr>
             </tbody>
         </table>
     </div>
@@ -325,7 +353,7 @@
     <!-- Rejected Transactions -->
     @if($rejectedSales->count() > 0)
     <div class="section">
-        <div class="section-title">Rejected Transactions</div>
+        <div class="section-title">Rejected Transactions ({{ $rejectedSales->count() }} total)</div>
         <table>
             <thead>
                 <tr>
@@ -335,23 +363,39 @@
                     <th>Date</th>
                     <th class="text-right">Items</th>
                     <th class="text-right">Loss Amount</th>
+                    <th>Reason</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach($rejectedSales->take(15) as $sale)
+                @php $totalRejectedLoss = 0; @endphp
+                @foreach($rejectedSales->take(20) as $sale)
+                @php 
+                    $saleLoss = $sale->items->sum(function($item) { 
+                        return $item->quantity * ($item->product->cost_price ?? 0); 
+                    });
+                    $totalRejectedLoss += $saleLoss;
+                @endphp
                 <tr>
-                    <td>{{ $sale->transaction_id }}</td>
+                    <td style="font-size: 9px;">{{ $sale->transaction_id }}</td>
                     <td>{{ $sale->branch->name ?? 'N/A' }}</td>
                     <td>{{ $sale->staff->name ?? 'N/A' }}</td>
-                    <td>{{ $sale->sale_date->format('M d, Y') }}</td>
+                    <td>{{ $sale->sale_date->format('M d') }}</td>
                     <td class="text-right">{{ $sale->items->sum('quantity') }}</td>
-                    <td class="text-right text-danger">RM {{ number_format($sale->items->sum(function($item) { return $item->quantity * ($item->product->cost_price ?? 0); }), 2) }}</td>
+                    <td class="text-right text-danger">RM {{ number_format($saleLoss, 2) }}</td>
+                    <td style="font-size: 9px;">{{ Str::limit($sale->rejection_reason ?? '-', 20) }}</td>
                 </tr>
                 @endforeach
+                <tr style="background: #f0f0f0; font-weight: bold;">
+                    <td colspan="5"><strong>Total</strong></td>
+                    <td class="text-right text-danger"><strong>RM {{ number_format($totalRejectedLoss, 2) }}</strong></td>
+                    <td></td>
+                </tr>
             </tbody>
         </table>
-        @if($rejectedSales->count() > 15)
-        <p style="font-size: 9px; color: #999; text-align: center;">Showing 15 of {{ $rejectedSales->count() }} rejected transactions</p>
+        @if($rejectedSales->count() > 20)
+        <p style="font-size: 9px; color: #999; text-align: center; margin-top: 5px;">
+            Showing 20 of {{ $rejectedSales->count() }} rejected transactions
+        </p>
         @endif
     </div>
     @endif

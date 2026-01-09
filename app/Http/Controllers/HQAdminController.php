@@ -523,15 +523,6 @@ class HQAdminController extends Controller
         // Stock Loss by Category and Branch
         $stockLossByCategory = $this->getStockLossByCategory($branchFilter, $startDate, $endDate);
         $stockLossByBranch = $this->getStockLossByBranch($startDate, $endDate);
-        
-        // Monthly sales data for chart
-        $monthlyProfitTrend = $this->getMonthlyProfitTrend($branchFilter);
-
-        // Generate QuickChart URLs
-        $monthlySalesChartUrl = $this->generateMonthlySalesChartUrl($monthlyProfitTrend);
-        $lossBreakdownChartUrl = $this->generateLossBreakdownChartUrl($expiredLoss, $rejectedSalesLoss);
-        $stockLossByCategoryChartUrl = $this->generateStockLossByCategoryChartUrl($stockLossByCategory);
-        $stockLossByBranchChartUrl = $this->generateStockLossByBranchChartUrl($stockLossByBranch);
 
         $pdf = PDF::loadView('hq-admin.analytics-pdf', compact(
             'startDate',
@@ -546,151 +537,12 @@ class HQAdminController extends Controller
             'topProfitableProducts',
             'stockLossByCategory',
             'stockLossByBranch',
-            'rejectedSales',
-            'monthlySalesChartUrl',
-            'lossBreakdownChartUrl',
-            'stockLossByCategoryChartUrl',
-            'stockLossByBranchChartUrl'
+            'rejectedSales'
         ));
 
         $pdf->setPaper('A4', 'portrait');
         
         return $pdf->download('analytics-report-' . now()->format('Y-m-d') . '.pdf');
-    }
-
-    /**
-     * Generate QuickChart URL for monthly sales chart
-     */
-    private function generateMonthlySalesChartUrl($monthlyData)
-    {
-        if (empty($monthlyData['labels'])) return null;
-
-        $chartConfig = [
-            'type' => 'line',
-            'data' => [
-                'labels' => $monthlyData['labels'],
-                'datasets' => [
-                    [
-                        'label' => 'Revenue',
-                        'data' => $monthlyData['revenue'],
-                        'borderColor' => '#0d6efd',
-                        'backgroundColor' => 'rgba(13, 110, 253, 0.1)',
-                        'fill' => true
-                    ],
-                    [
-                        'label' => 'Profit',
-                        'data' => $monthlyData['profit'],
-                        'borderColor' => '#198754',
-                        'backgroundColor' => 'rgba(25, 135, 84, 0.1)',
-                        'fill' => true
-                    ]
-                ]
-            ],
-            'options' => [
-                'responsive' => true,
-                'plugins' => ['legend' => ['display' => true]]
-            ]
-        ];
-
-        return 'https://quickchart.io/chart?c=' . urlencode(json_encode($chartConfig)) . '&w=600&h=250';
-    }
-
-    /**
-     * Generate QuickChart URL for loss breakdown pie chart
-     */
-    private function generateLossBreakdownChartUrl($expiredLoss, $rejectedLoss)
-    {
-        if ($expiredLoss == 0 && $rejectedLoss == 0) return null;
-
-        $chartConfig = [
-            'type' => 'doughnut',
-            'data' => [
-                'labels' => ['Expired Stock', 'Rejected Sales'],
-                'datasets' => [[
-                    'data' => [$expiredLoss, $rejectedLoss],
-                    'backgroundColor' => ['#ffc107', '#dc3545']
-                ]]
-            ],
-            'options' => [
-                'plugins' => ['legend' => ['display' => true, 'position' => 'right']]
-            ]
-        ];
-
-        return 'https://quickchart.io/chart?c=' . urlencode(json_encode($chartConfig)) . '&w=400&h=200';
-    }
-
-    /**
-     * Generate QuickChart URL for stock loss by category chart
-     */
-    private function generateStockLossByCategoryChartUrl($stockLossByCategory)
-    {
-        if ($stockLossByCategory->isEmpty()) return null;
-
-        $labels = $stockLossByCategory->pluck('category')->toArray();
-        $expiredData = $stockLossByCategory->pluck('expired')->toArray();
-        $rejectedData = $stockLossByCategory->pluck('rejected')->toArray();
-
-        $chartConfig = [
-            'type' => 'bar',
-            'data' => [
-                'labels' => $labels,
-                'datasets' => [
-                    [
-                        'label' => 'Expired',
-                        'data' => $expiredData,
-                        'backgroundColor' => '#ffc107'
-                    ],
-                    [
-                        'label' => 'Rejected',
-                        'data' => $rejectedData,
-                        'backgroundColor' => '#dc3545'
-                    ]
-                ]
-            ],
-            'options' => [
-                'scales' => ['x' => ['stacked' => true], 'y' => ['stacked' => true]],
-                'plugins' => ['legend' => ['display' => true]]
-            ]
-        ];
-
-        return 'https://quickchart.io/chart?c=' . urlencode(json_encode($chartConfig)) . '&w=600&h=200';
-    }
-
-    /**
-     * Generate QuickChart URL for stock loss by branch chart
-     */
-    private function generateStockLossByBranchChartUrl($stockLossByBranch)
-    {
-        if ($stockLossByBranch->isEmpty()) return null;
-
-        $labels = $stockLossByBranch->pluck('branch')->toArray();
-        $expiredData = $stockLossByBranch->pluck('expired')->toArray();
-        $rejectedData = $stockLossByBranch->pluck('rejected')->toArray();
-
-        $chartConfig = [
-            'type' => 'bar',
-            'data' => [
-                'labels' => $labels,
-                'datasets' => [
-                    [
-                        'label' => 'Expired',
-                        'data' => $expiredData,
-                        'backgroundColor' => '#ffc107'
-                    ],
-                    [
-                        'label' => 'Rejected',
-                        'data' => $rejectedData,
-                        'backgroundColor' => '#dc3545'
-                    ]
-                ]
-            ],
-            'options' => [
-                'scales' => ['x' => ['stacked' => true], 'y' => ['stacked' => true]],
-                'plugins' => ['legend' => ['display' => true]]
-            ]
-        ];
-
-        return 'https://quickchart.io/chart?c=' . urlencode(json_encode($chartConfig)) . '&w=600&h=200';
     }
 
     /**
