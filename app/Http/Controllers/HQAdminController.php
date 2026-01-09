@@ -8,6 +8,7 @@ use App\Models\DailySale;
 use App\Models\DailySalesItem;
 use App\Models\Product;
 use App\Models\BranchStock;
+use App\Models\StockLoss;
 use App\Models\KPI;
 use App\Models\Benchmark;
 use App\Models\Notification;
