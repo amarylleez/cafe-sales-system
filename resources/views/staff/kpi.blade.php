@@ -113,7 +113,7 @@
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <div class="text-center p-3 bg-light rounded">
                                 <small class="text-muted">Branch Sales Target</small>
                                 <h4 class="mb-0 text-primary">RM {{ number_format($benchmark->monthly_sales_target, 2) }}</h4>
@@ -130,24 +130,7 @@
                                 <small class="text-muted">{{ number_format($branchSalesPercentage, 1) }}% achieved</small>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="text-center p-3 bg-light rounded">
-                                <small class="text-muted">Branch Transaction Target</small>
-                                <h4 class="mb-0 text-info">{{ number_format($benchmark->transaction_target) }}</h4>
-                                
-                                @php
-                                    $branchTxnPercentage = $benchmark->transaction_target > 0 
-                                        ? min(($branchTransactionCount / $benchmark->transaction_target) * 100, 100) 
-                                        : 0;
-                                @endphp
-                                
-                                <div class="progress mt-2" style="height: 8px;">
-                                    <div class="progress-bar bg-info" style="width: {{ $branchTxnPercentage }}%;"></div>
-                                </div>
-                                <small class="text-muted">{{ number_format($branchTxnPercentage, 1) }}% achieved ({{ $branchTransactionCount }} transactions)</small>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <div class="text-center p-3 bg-light rounded">
                                 <small class="text-muted">Branch Total Sales</small>
                                 <h4 class="mb-0 text-success">RM {{ number_format($branchMonthlySales, 2) }}</h4>
