@@ -85,11 +85,6 @@
                                     <i class="bi bi-calendar-x"></i> Expired: RM {{ number_format($expiredLoss, 2) }}
                                 </span>
                                 @endif
-                                @if($damagedLoss > 0)
-                                <span class="badge bg-secondary" style="font-size: 0.7rem;">
-                                    <i class="bi bi-trash"></i> Damaged: RM {{ number_format($damagedLoss, 2) }}
-                                </span>
-                                @endif
                                 <span class="badge bg-warning text-dark" style="font-size: 0.7rem;">
                                     <i class="bi bi-clock-history"></i> Unsold: RM {{ number_format($unsoldStockLoss, 2) }}
                                 </span>
@@ -725,39 +720,11 @@
             <div class="card shadow-sm border-warning">
                 <div class="card-header bg-warning text-dark">
                     <div class="d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="bi bi-calendar-x-fill"></i> Stock Losses (Expired & Write-offs)</h5>
+                        <h5 class="mb-0"><i class="bi bi-calendar-x-fill"></i> Expired Stock Losses</h5>
                         <span class="badge bg-danger fs-6">Total: RM {{ number_format($totalRecordedLoss, 2) }}</span>
                     </div>
                 </div>
                 <div class="card-body">
-                    <!-- Loss Summary by Type -->
-                    <div class="row mb-3">
-                        <div class="col-md-3">
-                            <div class="alert alert-danger py-2 mb-0">
-                                <small class="d-block text-muted">Expired</small>
-                                <strong>RM {{ number_format($expiredLoss, 2) }}</strong>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="alert alert-secondary py-2 mb-0">
-                                <small class="d-block text-muted">Damaged</small>
-                                <strong>RM {{ number_format($damagedLoss, 2) }}</strong>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="alert alert-warning py-2 mb-0">
-                                <small class="d-block text-muted">Manual Write-off</small>
-                                <strong>RM {{ number_format($manualWriteoffLoss, 2) }}</strong>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="alert alert-info py-2 mb-0">
-                                <small class="d-block text-muted">Other</small>
-                                <strong>RM {{ number_format($otherLoss, 2) }}</strong>
-                            </div>
-                        </div>
-                    </div>
-                    
                     <!-- Loss Details Table -->
                     <div class="table-responsive">
                         <table class="table table-hover mb-0">
@@ -776,21 +743,7 @@
                                 @foreach($stockLosses->take(10) as $loss)
                                 <tr>
                                     <td><strong>{{ $loss->product->name ?? 'Unknown Product' }}</strong></td>
-                                    <td>
-                                        @switch($loss->loss_type)
-                                            @case('expired')
-                                                <span class="badge bg-danger">Expired</span>
-                                                @break
-                                            @case('damaged')
-                                                <span class="badge bg-secondary">Damaged</span>
-                                                @break
-                                            @case('manual_writeoff')
-                                                <span class="badge bg-warning text-dark">Write-off</span>
-                                                @break
-                                            @default
-                                                <span class="badge bg-info">Other</span>
-                                        @endswitch
-                                    </td>
+                                    <td><span class="badge bg-danger">Expired</span></td>
                                     <td>{{ $loss->quantity }}</td>
                                     <td>RM {{ number_format($loss->unit_cost, 2) }}</td>
                                     <td class="text-danger"><strong>RM {{ number_format($loss->total_loss, 2) }}</strong></td>

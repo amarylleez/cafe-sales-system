@@ -560,11 +560,8 @@ class BranchManagerController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // Calculate stock losses by type
+        // Calculate stock losses (expired only - other types not currently used)
         $expiredLoss = $stockLosses->where('loss_type', 'expired')->sum('total_loss');
-        $damagedLoss = $stockLosses->where('loss_type', 'damaged')->sum('total_loss');
-        $manualWriteoffLoss = $stockLosses->where('loss_type', 'manual_writeoff')->sum('total_loss');
-        $otherLoss = $stockLosses->where('loss_type', 'other')->sum('total_loss');
         $totalRecordedLoss = $stockLosses->sum('total_loss');
 
         // Total stock loss (includes expired, damaged, unsold, and rejected)
@@ -631,9 +628,6 @@ class BranchManagerController extends Controller
             // Stock loss tracking data
             'stockLosses',
             'expiredLoss',
-            'damagedLoss',
-            'manualWriteoffLoss',
-            'otherLoss',
             'totalRecordedLoss',
             'topProfitableProducts',
             'dailyProfitTrend',
