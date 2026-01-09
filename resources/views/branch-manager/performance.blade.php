@@ -631,9 +631,9 @@
                                     <th>Potential Loss</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                @foreach($potentialLossStock->take(5) as $stock)
-                                <tr>
+                            <tbody id="unsoldStockTableBody">
+                                @foreach($potentialLossStock as $index => $stock)
+                                <tr class="{{ $index >= 5 ? 'unsold-hidden-row d-none' : '' }}">
                                     <td><strong>{{ $stock->product->name ?? 'Unknown' }}</strong></td>
                                     <td>{{ $stock->stock_quantity }}</td>
                                     <td>{{ $stock->received_date ? \Carbon\Carbon::parse($stock->received_date)->format('M d, Y') : 'N/A' }}</td>
@@ -651,7 +651,9 @@
                     </div>
                     @if($potentialLossStock->count() > 5)
                     <div class="text-center mt-3">
-                        <small class="text-muted">Showing 5 of {{ $potentialLossStock->count() }} unsold items</small>
+                        <button type="button" class="btn btn-outline-warning btn-sm" id="toggleUnsoldStockBtn" onclick="toggleUnsoldStock()">
+                            <i class="bi bi-chevron-down"></i> Show All ({{ $potentialLossStock->count() }} items)
+                        </button>
                     </div>
                     @endif
                 </div>
@@ -826,6 +828,29 @@
 @push('scripts')
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
+// Toggle unsold stock table rows
+let unsoldStockExpanded = false;
+function toggleUnsoldStock() {
+    const hiddenRows = document.querySelectorAll('.unsold-hidden-row');
+    const btn = document.getElementById('toggleUnsoldStockBtn');
+    
+    unsoldStockExpanded = !unsoldStockExpanded;
+    
+    hiddenRows.forEach(row => {
+        if (unsoldStockExpanded) {
+            row.classList.remove('d-none');
+        } else {
+            row.classList.add('d-none');
+        }
+    });
+    
+    if (unsoldStockExpanded) {
+        btn.innerHTML = '<i class="bi bi-chevron-up"></i> Show Less';
+    } else {
+        btn.innerHTML = '<i class="bi bi-chevron-down"></i> Show All ({{ $potentialLossStock->count() }} items)';
+    }
+}
+
 // Toggle between chart and table view
 function toggleBreakdownView(view) {
     const chartView = document.getElementById('breakdownChartView');
