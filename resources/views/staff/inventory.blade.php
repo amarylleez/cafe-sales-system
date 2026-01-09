@@ -25,6 +25,9 @@
                             <i class="bi bi-box-seam"></i> Update Sales Item Records
                         </h5>
                         <div class="d-flex gap-2">
+                            <button class="btn btn-danger btn-sm" id="clearExpiredBtn">
+                                <i class="bi bi-trash"></i> Clear Expired Stock
+                            </button>
                             <button class="btn btn-light btn-sm" id="bulkRestockBtn">
                                 <i class="bi bi-box-arrow-in-down"></i> Bulk Restock
                             </button>
@@ -257,6 +260,43 @@ document.addEventListener('DOMContentLoaded', function() {
     const productDetailsModal = new bootstrap.Modal(document.getElementById('productDetailsModal'));
     const bulkRestockModal = new bootstrap.Modal(document.getElementById('bulkRestockModal'));
     const restockSuccessModal = new bootstrap.Modal(document.getElementById('restockSuccessModal'));
+
+    // Clear Expired Stock button
+    document.getElementById('clearExpiredBtn').addEventListener('click', function() {
+        if (!confirm('Are you sure you want to clear all expired stock? This will record the loss and set expired items to 0.')) {
+            return;
+        }
+        
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Clearing...';
+        
+        fetch('/staff/stock/clear-expired', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert(data.message || 'No expired stock found to clear.');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('An error occurred while clearing expired stock.');
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-trash"></i> Clear Expired Stock';
+        });
+    });
 
     // Toggle availability
     document.querySelectorAll('.availability-toggle').forEach(toggle => {

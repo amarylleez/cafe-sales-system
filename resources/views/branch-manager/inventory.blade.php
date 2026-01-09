@@ -32,6 +32,9 @@
                             <i class="bi bi-box-seam"></i> Inventory Management
                         </h5>
                         <div class="d-flex gap-2">
+                            <button class="btn btn-danger btn-sm" id="clearExpiredBtn">
+                                <i class="bi bi-trash"></i> Clear Expired Stock
+                            </button>
                             <button class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#addProductModal">
                                 <i class="bi bi-plus-circle"></i> Add New Product
                             </button>
@@ -765,6 +768,47 @@ document.addEventListener('DOMContentLoaded', function() {
         .finally(() => {
             btn.innerHTML = originalHtml;
             btn.disabled = false;
+        });
+    }
+
+    // Clear Expired Stock
+    const clearExpiredBtn = document.getElementById('clearExpiredBtn');
+    if (clearExpiredBtn) {
+        clearExpiredBtn.addEventListener('click', function() {
+            if (!confirm('Are you sure you want to clear all expired stock? This will:\n\n• Record all expired items as losses\n• Set expired stock quantities to zero\n\nThis action cannot be undone.')) {
+                return;
+            }
+
+            const btn = this;
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Clearing...';
+            btn.disabled = true;
+
+            fetch('/branch-manager/stock/clear-expired', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Failed to clear expired stock');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while clearing expired stock');
+            })
+            .finally(() => {
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            });
         });
     }
 });

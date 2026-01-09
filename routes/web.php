@@ -99,6 +99,7 @@ Route::middleware(['auth'])->prefix('branch-manager')->name('branch-manager.')->
     // Stock Management
     Route::get('/stock', [BranchManagerController::class, 'stock'])->name('stock');
     Route::post('/stock/{id}/adjust', [BranchManagerController::class, 'adjustStock'])->name('stock.adjust');
+    Route::post('/stock/clear-expired', [BranchManagerController::class, 'clearExpiredStock'])->name('stock.clear-expired');
 
     // Alerts/Notifications
     Route::get('/alerts', [BranchManagerController::class, 'alerts'])->name('alerts');
@@ -138,6 +139,7 @@ Route::middleware(['auth'])->prefix('staff')->name('staff.')->group(function () 
     Route::get('/stock', [StaffController::class, 'stock'])->name('stock');
     Route::post('/stock/{id}/add', [StaffController::class, 'addStock'])->name('stock.add');
     Route::post('/stock/{id}/adjust', [StaffController::class, 'adjustStock'])->name('stock.adjust');
+    Route::post('/stock/clear-expired', [StaffController::class, 'clearExpiredStock'])->name('stock.clear-expired');
 });
 
 

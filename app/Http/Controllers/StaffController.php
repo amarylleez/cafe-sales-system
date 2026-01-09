@@ -11,6 +11,7 @@ use App\Models\Category;
 use App\Models\Notification;
 use App\Models\Benchmark;
 use App\Models\BranchStock;
+use App\Models\StockLoss;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -800,6 +801,87 @@ class StaffController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to adjust stock: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Clear all expired stock and record as losses
+     */
+    public function clearExpiredStock()
+    {
+        try {
+            $user = auth()->user();
+            $branchId = $user->branch_id;
+            
+            // Find all expired stock for this branch
+            $expiredStock = BranchStock::with('product')
+                ->where('branch_id', $branchId)
+                ->where('stock_quantity', '>', 0)
+                ->whereNotNull('expiry_date')
+                ->where('expiry_date', '<=', now())
+                ->get();
+            
+            if ($expiredStock->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No expired stock found to clear.',
+                ]);
+            }
+            
+            $clearedCount = 0;
+            $totalLoss = 0;
+            
+            DB::beginTransaction();
+            
+            foreach ($expiredStock as $stock) {
+                $unitCost = $stock->cost_at_purchase ?? $stock->product->cost_price ?? 0;
+                $lossAmount = $stock->stock_quantity * $unitCost;
+                
+                // Create StockLoss record
+                StockLoss::create([
+                    'branch_id' => $branchId,
+                    'product_id' => $stock->product_id,
+                    'quantity' => $stock->stock_quantity,
+                    'unit_cost' => $unitCost,
+                    'total_loss' => $lossAmount,
+                    'loss_type' => 'expired',
+                    'stock_added_at' => $stock->received_date,
+                    'expired_at' => $stock->expiry_date,
+                    'notes' => 'Cleared via Clear Expired Stock button by ' . $user->name,
+                ]);
+                
+                // Log the stock removal
+                \App\Models\StockLog::create([
+                    'product_id' => $stock->product_id,
+                    'branch_id' => $branchId,
+                    'user_id' => auth()->id(),
+                    'quantity' => $stock->stock_quantity,
+                    'type' => 'remove',
+                    'notes' => 'Expired stock cleared - ' . $stock->product->name,
+                ]);
+                
+                $totalLoss += $lossAmount;
+                $clearedCount += $stock->stock_quantity;
+                
+                // Set stock to 0
+                $stock->stock_quantity = 0;
+                $stock->save();
+            }
+            
+            DB::commit();
+            
+            return response()->json([
+                'success' => true,
+                'message' => $clearedCount . ' expired items cleared. Total loss recorded: RM ' . number_format($totalLoss, 2),
+                'cleared_count' => $clearedCount,
+                'total_loss' => $totalLoss,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to clear expired stock: ' . $e->getMessage(),
             ], 500);
         }
     }
