@@ -13,7 +13,7 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <p class="mb-0">Stay updated with important notifications from branch managers and system alerts.</p>
+                    <p class="mb-0">Stay updated with important notifications, and system alerts.</p>
                 </div>
             </div>
         </div>
