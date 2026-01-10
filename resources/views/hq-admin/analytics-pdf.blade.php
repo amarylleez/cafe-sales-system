@@ -374,6 +374,11 @@
                         return $item->quantity * ($item->product->cost_price ?? 0); 
                     });
                     $totalRejectedLoss += $saleLoss;
+                    // Extract reason from notes field
+                    $reason = '-';
+                    if ($sale->notes && preg_match('/Reason:\s*(.+?)(?:\n|$)/i', $sale->notes, $matches)) {
+                        $reason = trim($matches[1]);
+                    }
                 @endphp
                 <tr>
                     <td style="font-size: 9px;">{{ $sale->transaction_id }}</td>
@@ -382,7 +387,7 @@
                     <td>{{ $sale->sale_date->format('M d') }}</td>
                     <td class="text-right">{{ $sale->items->sum('quantity') }}</td>
                     <td class="text-right text-danger">RM {{ number_format($saleLoss, 2) }}</td>
-                    <td style="font-size: 9px;">{{ Str::limit($sale->rejection_reason ?? '-', 20) }}</td>
+                    <td style="font-size: 9px;">{{ Str::limit($reason, 20) }}</td>
                 </tr>
                 @endforeach
                 <tr style="background: #f0f0f0; font-weight: bold;">
