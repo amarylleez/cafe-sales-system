@@ -308,6 +308,54 @@
         </div>
     </div>
 
+    <!-- Expired Products Warning -->
+    @if($expiredProducts->count() > 0)
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="bi bi-calendar-x-fill"></i> Expired Products (Loss from Expired Stock)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Branch</th>
+                                    <th>Quantity</th>
+                                    <th>Expired Date</th>
+                                    <th>Loss Amount</th>
+                                    <th>Recorded By</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($expiredProducts as $index => $expired)
+                                <tr class="expired-product-row {{ $index >= 5 ? 'd-none' : '' }}">
+                                    <td><strong>{{ $expired->product->name ?? 'Unknown' }}</strong></td>
+                                    <td>{{ $expired->branch->name ?? 'Unknown' }}</td>
+                                    <td>{{ $expired->quantity }} units</td>
+                                    <td>{{ $expired->expired_at ? \Carbon\Carbon::parse($expired->expired_at)->format('M d, Y') : ($expired->loss_date ? \Carbon\Carbon::parse($expired->loss_date)->format('M d, Y') : 'N/A') }}</td>
+                                    <td class="text-warning"><strong>RM {{ number_format($expired->total_loss, 2) }}</strong></td>
+                                    <td><small class="text-muted">{{ $expired->processedBy->name ?? 'System' }}</small></td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                    @if($expiredProducts->count() > 5)
+                    <div class="text-center mt-3">
+                        <button type="button" class="btn btn-outline-warning btn-sm" id="toggleExpiredProducts">
+                            <i class="bi bi-chevron-down"></i> Show All ({{ $expiredProducts->count() }} items)
+                        </button>
+                    </div>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <!-- Rejected Transactions Warning -->
     @if($rejectedSales->count() > 0)
     <div class="row mb-4">
@@ -870,6 +918,31 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     @endif
+
+    // Toggle expired products visibility
+    const toggleExpiredBtn = document.getElementById('toggleExpiredProducts');
+    if (toggleExpiredBtn) {
+        let showingAllExpired = false;
+        toggleExpiredBtn.addEventListener('click', function() {
+            const allExpiredRows = document.querySelectorAll('.expired-product-row');
+            
+            if (showingAllExpired) {
+                // Hide rows after the 5th one
+                allExpiredRows.forEach((row, index) => {
+                    if (index >= 5) {
+                        row.classList.add('d-none');
+                    }
+                });
+                toggleExpiredBtn.innerHTML = '<i class="bi bi-chevron-down"></i> Show All ({{ $expiredProducts->count() }} items)';
+                showingAllExpired = false;
+            } else {
+                // Show all rows
+                allExpiredRows.forEach(row => row.classList.remove('d-none'));
+                toggleExpiredBtn.innerHTML = '<i class="bi bi-chevron-up"></i> Show Less';
+                showingAllExpired = true;
+            }
+        });
+    }
 
     // Toggle rejected transactions visibility
     const toggleBtn = document.getElementById('toggleRejectedTransactions');

@@ -313,6 +313,17 @@ class HQAdminController extends Controller
         // Total stock loss = expired + rejected
         $stockLoss = $expiredLoss + $rejectedSalesLoss;
 
+        // Get expired products for display
+        $expiredProductsQuery = StockLoss::with(['product', 'branch', 'processedBy'])
+            ->where('loss_type', 'expired')
+            ->whereBetween('created_at', [$startDate, $endDate->copy()->endOfDay()]);
+        
+        if ($branchFilter) {
+            $expiredProductsQuery->where('branch_id', $branchFilter);
+        }
+        
+        $expiredProducts = $expiredProductsQuery->orderBy('created_at', 'desc')->get();
+
         // Get rejected sales for display
         $rejectedSales = DailySale::with(['items.product', 'branch', 'staff'])
             ->whereBetween('sale_date', [$startDate, $endDate])
@@ -383,6 +394,7 @@ class HQAdminController extends Controller
             'stockLoss',
             'expiredLoss',
             'rejectedSalesLoss',
+            'expiredProducts',
             'rejectedSales',
             'topProfitableProducts',
             'branchProfitData',
