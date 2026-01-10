@@ -301,52 +301,6 @@
         </div>
     </div>
 
-    <!-- Stock Loss Warning -->
-    @if($potentialLossStock->count() > 0)
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card shadow-sm border-warning">
-                <div class="card-header bg-warning text-dark">
-                    <h5 class="mb-0"><i class="bi bi-exclamation-triangle-fill"></i> Unsold Stock (Potential Loss)</h5>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Product</th>
-                                    <th>Branch</th>
-                                    <th>Quantity</th>
-                                    <th>Stocked Date</th>
-                                    <th>Days Unsold</th>
-                                    <th>Potential Loss</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($potentialLossStock->take(5) as $stock)
-                                <tr>
-                                    <td><strong>{{ $stock->product->name ?? 'Unknown' }}</strong></td>
-                                    <td>{{ $stock->branch->name ?? 'Unknown' }}</td>
-                                    <td>{{ $stock->stock_quantity }}</td>
-                                    <td>{{ $stock->received_date ? \Carbon\Carbon::parse($stock->received_date)->format('M d, Y') : 'N/A' }}</td>
-                                    <td>
-                                        @php $daysUnsold = $stock->received_date ? now()->diffInDays($stock->received_date) : 0; @endphp
-                                        <span class="badge bg-{{ $daysUnsold >= 3 ? 'danger' : 'warning' }}">
-                                            {{ $daysUnsold }} days
-                                        </span>
-                                    </td>
-                                    <td class="text-danger">RM {{ number_format($stock->stock_quantity * ($stock->cost_at_purchase ?? $stock->product->cost_price ?? 0), 2) }}</td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    @endif
-
     <!-- Rejected Transactions Warning -->
     @if($rejectedSales->count() > 0)
     <div class="row mb-4">
@@ -370,7 +324,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($rejectedSales->take(5) as $sale)
+                                @foreach($rejectedSales as $index => $sale)
                                 @php
                                     $saleLoss = $sale->items->sum(function($item) {
                                         return $item->quantity * ($item->product->cost_price ?? 0);
@@ -381,7 +335,7 @@
                                         $reason = trim($matches[1]);
                                     }
                                 @endphp
-                                <tr>
+                                <tr class="rejected-transaction-row {{ $index >= 5 ? 'd-none' : '' }}">
                                     <td><strong>{{ $sale->transaction_id ?? 'TXN-'.$sale->id }}</strong></td>
                                     <td>{{ $sale->branch->name ?? 'Unknown' }}</td>
                                     <td>{{ $sale->staff->name ?? 'Unknown' }}</td>
@@ -396,7 +350,9 @@
                     </div>
                     @if($rejectedSales->count() > 5)
                     <div class="text-center mt-3">
-                        <small class="text-muted">Showing 5 of {{ $rejectedSales->count() }} rejected transactions</small>
+                        <button type="button" class="btn btn-outline-danger btn-sm" id="toggleRejectedTransactions">
+                            <i class="bi bi-chevron-down"></i> Show All ({{ $rejectedSales->count() }} transactions)
+                        </button>
                     </div>
                     @endif
                 </div>
@@ -907,6 +863,32 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     @endif
+
+    // Toggle rejected transactions visibility
+    const toggleBtn = document.getElementById('toggleRejectedTransactions');
+    if (toggleBtn) {
+        let showingAll = false;
+        toggleBtn.addEventListener('click', function() {
+            const hiddenRows = document.querySelectorAll('.rejected-transaction-row.d-none');
+            const allRows = document.querySelectorAll('.rejected-transaction-row');
+            
+            if (showingAll) {
+                // Hide rows after the 5th one
+                allRows.forEach((row, index) => {
+                    if (index >= 5) {
+                        row.classList.add('d-none');
+                    }
+                });
+                toggleBtn.innerHTML = '<i class="bi bi-chevron-down"></i> Show All ({{ $rejectedSales->count() }} transactions)';
+                showingAll = false;
+            } else {
+                // Show all rows
+                allRows.forEach(row => row.classList.remove('d-none'));
+                toggleBtn.innerHTML = '<i class="bi bi-chevron-up"></i> Show Less';
+                showingAll = true;
+            }
+        });
+    }
 });
 </script>
 @endpush
