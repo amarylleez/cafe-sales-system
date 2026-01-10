@@ -138,7 +138,6 @@
                     <h5 class="mb-0"><i class="bi bi-clock-history"></i> Broadcast History</h5>
                     <div class="btn-group btn-group-sm" role="group">
                         <button type="button" class="btn btn-outline-primary active" data-filter="all">All</button>
-                        <button type="button" class="btn btn-outline-primary" data-filter="announcement">Announcements</button>
                         <button type="button" class="btn btn-outline-primary" data-filter="urgent">Urgent</button>
                     </div>
                 </div>
@@ -322,11 +321,8 @@ document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.broadcast-item').forEach(item => {
                 if (filter === 'all') {
                     item.style.display = '';
-                } else if (filter === 'announcement') {
-                    // All broadcasts are announcements, so show all
-                    item.style.display = '';
                 } else if (filter === 'urgent') {
-                    item.style.display = (item.dataset.type === 'urgent' || item.dataset.type === 'high') ? '' : 'none';
+                    item.style.display = item.dataset.type === 'urgent' ? '' : 'none';
                 } else {
                     item.style.display = item.dataset.type === filter ? '' : 'none';
                 }
