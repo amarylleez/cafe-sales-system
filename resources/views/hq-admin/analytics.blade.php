@@ -326,7 +326,6 @@
                                     <th>Quantity</th>
                                     <th>Expired Date</th>
                                     <th>Loss Amount</th>
-                                    <th>Recorded By</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -337,7 +336,6 @@
                                     <td>{{ $expired->quantity }} units</td>
                                     <td>{{ $expired->expired_at ? \Carbon\Carbon::parse($expired->expired_at)->format('M d, Y') : ($expired->loss_date ? \Carbon\Carbon::parse($expired->loss_date)->format('M d, Y') : 'N/A') }}</td>
                                     <td class="text-warning"><strong>RM {{ number_format($expired->total_loss, 2) }}</strong></td>
-                                    <td><small class="text-muted">{{ $expired->processedBy->name ?? 'System' }}</small></td>
                                 </tr>
                                 @endforeach
                             </tbody>
