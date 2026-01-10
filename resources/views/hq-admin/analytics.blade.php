@@ -167,6 +167,13 @@
                                             <strong>{{ $branch->manager->name ?? 'Not Assigned' }}</strong>
                                         </div>
                                     </div>
+
+                                    <div class="mt-3 text-center">
+                                        <a href="{{ route('hq-admin.analytics.branch', $branch->id) }}" 
+                                           class="btn btn-{{ $index === 0 ? 'success' : ($index === 1 ? 'info' : 'warning') }} btn-sm">
+                                            <i class="bi bi-bar-chart-line"></i> View Details
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
                         </div>
