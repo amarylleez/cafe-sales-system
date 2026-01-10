@@ -111,16 +111,20 @@ class ProductSeeder extends Seeder
         ];
 
         foreach ($products as $product) {
-            DB::table('products')->insert([
-                'category_id' => $product['category_id'],
-                'name' => $product['name'],
-                'price' => $product['price'],
-                'cost_price' => $product['cost_price'],
-                'is_available' => true,
-                'stock_quantity' => rand(10, 100),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            DB::table('products')->updateOrInsert(
+                [
+                    'category_id' => $product['category_id'],
+                    'name' => $product['name'],
+                ],
+                [
+                    'price' => $product['price'],
+                    'cost_price' => $product['cost_price'],
+                    'is_available' => true,
+                    'stock_quantity' => rand(10, 100),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]
+            );
         }
     }
 }
