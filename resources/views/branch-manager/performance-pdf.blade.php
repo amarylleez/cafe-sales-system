@@ -226,35 +226,6 @@
         <div class="amount">RM {{ number_format($netProfit, 2) }}</div>
     </div>
 
-    <!-- HQ Benchmark Targets -->
-    @if(isset($benchmark) && $benchmark)
-    <div class="section">
-        <div class="section-title">HQ Benchmark Targets</div>
-        <div class="benchmark-box">
-            <div class="benchmark-card">
-                <div class="label">Monthly Sales Target</div>
-                <div class="value">RM {{ number_format($benchmark->monthly_sales_target, 2) }}</div>
-                @php
-                    $branchSalesPercentage = $benchmark->monthly_sales_target > 0 
-                        ? min(($branchMonthlySales / $benchmark->monthly_sales_target) * 100, 100) 
-                        : 0;
-                @endphp
-                <div class="progress-text">Progress: {{ number_format($branchSalesPercentage, 1) }}%</div>
-            </div>
-            <div class="benchmark-card">
-                <div class="label">Branch Monthly Sales</div>
-                <div class="value">RM {{ number_format($branchMonthlySales, 2) }}</div>
-                <div class="progress-text">{{ number_format($branchTransactionCount) }} transactions</div>
-            </div>
-            <div class="benchmark-card">
-                <div class="label">Staff Sales Target</div>
-                <div class="value">RM {{ number_format($benchmark->staff_sales_target, 2) }}</div>
-                <div class="progress-text">Per Staff Monthly</div>
-            </div>
-        </div>
-    </div>
-    @endif
-
     <!-- Staff Performance -->
     @if(isset($staffKpis) && count($staffKpis) > 0)
     <div class="section">
