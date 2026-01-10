@@ -85,6 +85,7 @@ Route::middleware(['auth'])->prefix('branch-manager')->name('branch-manager.')->
     
     // Performance (Benchmark + Profit/Loss)
     Route::get('/performance', [BranchManagerController::class, 'performance'])->name('performance');
+    Route::get('/performance/export-pdf', [BranchManagerController::class, 'exportPerformancePdf'])->name('performance.export-pdf');
     
     // Team Overview
     Route::get('/team-overview', [BranchManagerController::class, 'teamOverview'])->name('team-overview');

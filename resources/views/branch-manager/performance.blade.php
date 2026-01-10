@@ -23,7 +23,7 @@
                         </div>
                         <div class="col-md-6">
                             <!-- Date Range Filter for Profit/Loss -->
-                            <form method="GET" class="d-flex gap-2 justify-content-end">
+                            <form method="GET" class="d-flex gap-2 justify-content-end align-items-center">
                                 <select name="range" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
                                     <option value="today" {{ $dateRange == 'today' ? 'selected' : '' }}>Today</option>
                                     <option value="this_week" {{ $dateRange == 'this_week' ? 'selected' : '' }}>This Week</option>
@@ -32,6 +32,9 @@
                                     <option value="last_month" {{ $dateRange == 'last_month' ? 'selected' : '' }}>Last Month</option>
                                 </select>
                                 <span class="badge bg-secondary align-self-center">{{ $startDate->format('M d') }} - {{ $endDate->format('M d, Y') }}</span>
+                                <a href="{{ route('branch-manager.performance.export-pdf', ['range' => $dateRange]) }}" class="btn btn-sm btn-outline-light">
+                                    <i class="bi bi-file-earmark-pdf"></i> Export PDF
+                                </a>
                             </form>
                         </div>
                     </div>

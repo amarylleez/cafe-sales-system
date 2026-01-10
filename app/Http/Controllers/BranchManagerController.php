@@ -16,6 +16,7 @@ use App\Models\StockLoss;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class BranchManagerController extends Controller
 {
@@ -1461,5 +1462,197 @@ class BranchManagerController extends Controller
         $notification->update(['is_read' => true]);
 
         return response()->json(['success' => true]);
+    }
+
+    /**
+     * Export Performance to PDF
+     */
+    public function exportPerformancePdf(Request $request)
+    {
+        $user = auth()->user();
+        $branchId = $user->branch_id;
+        $branch = $user->branch;
+        $currentMonth = Carbon::now();
+
+        // Date range handling
+        $dateRange = $request->get('range', 'this_month');
+        
+        switch ($dateRange) {
+            case 'today':
+                $startDate = Carbon::today();
+                $endDate = Carbon::today();
+                break;
+            case 'this_week':
+                $startDate = Carbon::now()->startOfWeek();
+                $endDate = Carbon::now()->endOfWeek();
+                break;
+            case 'last_week':
+                $startDate = Carbon::now()->subWeek()->startOfWeek();
+                $endDate = Carbon::now()->subWeek()->endOfWeek();
+                break;
+            case 'this_month':
+                $startDate = Carbon::now()->startOfMonth();
+                $endDate = Carbon::now()->endOfMonth();
+                break;
+            case 'last_month':
+                $startDate = Carbon::now()->subMonth()->startOfMonth();
+                $endDate = Carbon::now()->subMonth()->endOfMonth();
+                break;
+            default:
+                $startDate = Carbon::now()->startOfMonth();
+                $endDate = Carbon::now()->endOfMonth();
+        }
+
+        // Get benchmark
+        $benchmark = Benchmark::where('is_active', true)->first();
+
+        // Calculate branch's monthly sales
+        $branchMonthlySales = DailySale::where('branch_id', $branchId)
+            ->whereMonth('sale_date', $currentMonth->month)
+            ->whereYear('sale_date', $currentMonth->year)
+            ->where('status', 'completed')
+            ->sum('total_amount');
+
+        // Calculate branch's transaction count
+        $branchTransactionCount = DailySale::where('branch_id', $branchId)
+            ->whereMonth('sale_date', $currentMonth->month)
+            ->whereYear('sale_date', $currentMonth->year)
+            ->where('status', 'completed')
+            ->count();
+
+        // Get staff KPIs
+        $staffKpis = User::where('branch_id', $branchId)
+            ->where('role', 'staff')
+            ->get()
+            ->map(function($staff) use ($currentMonth, $benchmark) {
+                $staffSales = DailySale::where('staff_id', $staff->id)
+                    ->whereMonth('sale_date', $currentMonth->month)
+                    ->whereYear('sale_date', $currentMonth->year)
+                    ->where('status', 'completed')
+                    ->sum('total_amount');
+
+                $transactions = DailySale::where('staff_id', $staff->id)
+                    ->whereMonth('sale_date', $currentMonth->month)
+                    ->whereYear('sale_date', $currentMonth->year)
+                    ->where('status', 'completed')
+                    ->count();
+
+                $staffTarget = $benchmark ? $benchmark->staff_sales_target : 0;
+                $progress = $staffTarget > 0 ? min(($staffSales / $staffTarget) * 100, 100) : 0;
+
+                return [
+                    'staff' => $staff,
+                    'sales' => $staffSales,
+                    'transactions' => $transactions,
+                    'target' => $staffTarget,
+                    'progress' => $progress
+                ];
+            });
+
+        // Get sales items for profit calculation
+        $salesItems = DailySalesItem::with(['product', 'dailySale'])
+            ->whereHas('dailySale', function($q) use ($startDate, $endDate, $branchId) {
+                $q->whereBetween('sale_date', [$startDate, $endDate])
+                  ->where('status', 'completed')
+                  ->where('branch_id', $branchId);
+            })
+            ->get();
+
+        // Calculate totals
+        $totalRevenue = $salesItems->sum('total');
+        $totalCost = $salesItems->sum(function($item) {
+            return $item->quantity * ($item->product->cost_price ?? 0);
+        });
+
+        $grossProfit = $totalRevenue - $totalCost;
+        $profitMargin = $totalRevenue > 0 ? ($grossProfit / $totalRevenue) * 100 : 0;
+
+        // Product profit data
+        $productProfitData = [];
+        foreach ($salesItems as $item) {
+            $productId = $item->product_id;
+            if (!isset($productProfitData[$productId])) {
+                $productProfitData[$productId] = [
+                    'product' => $item->product,
+                    'quantity_sold' => 0,
+                    'revenue' => 0,
+                    'cost' => 0,
+                    'profit' => 0
+                ];
+            }
+            $revenue = $item->total;
+            $cost = $item->quantity * ($item->product->cost_price ?? 0);
+            $productProfitData[$productId]['quantity_sold'] += $item->quantity;
+            $productProfitData[$productId]['revenue'] += $revenue;
+            $productProfitData[$productId]['cost'] += $cost;
+            $productProfitData[$productId]['profit'] += ($revenue - $cost);
+        }
+        $topProfitableProducts = collect($productProfitData)->sortByDesc('profit')->take(5)->values();
+
+        // Rejected sales loss
+        $rejectedItems = DailySalesItem::with(['product', 'dailySale'])
+            ->whereHas('dailySale', function($q) use ($startDate, $endDate, $branchId) {
+                $q->whereBetween('sale_date', [$startDate, $endDate])
+                  ->where('status', 'rejected')
+                  ->where('branch_id', $branchId);
+            })
+            ->get();
+        
+        $rejectedSalesLoss = $rejectedItems->sum(function($item) {
+            return $item->quantity * ($item->product->cost_price ?? 0);
+        });
+
+        // Expired loss
+        $expiredLoss = StockLoss::where('branch_id', $branchId)
+            ->where('loss_type', 'expired')
+            ->whereBetween('created_at', [$startDate, $endDate->copy()->endOfDay()])
+            ->sum('total_loss');
+
+        // Expired products for display
+        $expiredProducts = StockLoss::with(['product'])
+            ->where('branch_id', $branchId)
+            ->where('loss_type', 'expired')
+            ->whereBetween('created_at', [$startDate, $endDate->copy()->endOfDay()])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // Total stock loss
+        $stockLoss = $rejectedSalesLoss + $expiredLoss;
+
+        // Net profit
+        $netProfit = $grossProfit - $stockLoss;
+
+        // Rejected sales for display
+        $rejectedSales = DailySale::with(['items.product', 'staff'])
+            ->where('branch_id', $branchId)
+            ->whereBetween('sale_date', [$startDate, $endDate])
+            ->where('status', 'rejected')
+            ->orderBy('sale_date', 'desc')
+            ->get();
+
+        $pdf = Pdf::loadView('branch-manager.performance-pdf', compact(
+            'branch',
+            'startDate',
+            'endDate',
+            'benchmark',
+            'branchMonthlySales',
+            'branchTransactionCount',
+            'staffKpis',
+            'totalRevenue',
+            'totalCost',
+            'grossProfit',
+            'netProfit',
+            'profitMargin',
+            'stockLoss',
+            'expiredLoss',
+            'rejectedSalesLoss',
+            'topProfitableProducts',
+            'expiredProducts',
+            'rejectedSales'
+        ));
+
+        $pdf->setPaper('A4', 'portrait');
+        
+        return $pdf->download('branch-performance-' . $branch->name . '-' . now()->format('Y-m-d') . '.pdf');
     }
 }
