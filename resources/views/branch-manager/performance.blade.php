@@ -32,8 +32,8 @@
                                     <option value="last_month" {{ $dateRange == 'last_month' ? 'selected' : '' }}>Last Month</option>
                                 </select>
                                 <span class="badge bg-secondary align-self-center">{{ $startDate->format('M d') }} - {{ $endDate->format('M d, Y') }}</span>
-                                <a href="{{ route('branch-manager.performance.export-pdf', ['range' => $dateRange]) }}" class="btn btn-sm btn-outline-light">
-                                    <i class="bi bi-file-earmark-pdf"></i> Export PDF
+                                <a href="{{ route('branch-manager.performance.export-pdf', ['range' => $dateRange]) }}" class="btn btn-sm btn-light">
+                                    <i class="bi bi-file-earmark-pdf text-danger"></i> Export PDF
                                 </a>
                             </form>
                         </div>
