@@ -15,6 +15,7 @@ use App\Models\Notification;
 use App\Models\StockLoss;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -848,9 +849,10 @@ class BranchManagerController extends Controller
                 'message' => 'Product availability updated for your branch',
             ]);
         } catch (\Exception $e) {
+            Log::error('Failed to update product availability', ['exception' => $e]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update availability: ' . $e->getMessage(),
+                'message' => 'Failed to update availability. Please try again.',
             ], 500);
         }
     }
@@ -917,9 +919,10 @@ class BranchManagerController extends Controller
                 'message' => 'Validation failed: ' . implode(', ', $e->validator->errors()->all()),
             ], 422);
         } catch (\Exception $e) {
+            Log::error('Failed to add product', ['exception' => $e]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to add product: ' . $e->getMessage(),
+                'message' => 'Failed to add product. Please try again.',
             ], 500);
         }
     }
@@ -965,9 +968,10 @@ class BranchManagerController extends Controller
                 ]);
             }
         } catch (\Exception $e) {
+            Log::error('Failed to remove product', ['exception' => $e]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to remove product: ' . $e->getMessage(),
+                'message' => 'Failed to remove product. Please try again.',
             ], 500);
         }
     }
@@ -1047,9 +1051,10 @@ class BranchManagerController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Failed to clear expired stock', ['exception' => $e]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to clear expired stock: ' . $e->getMessage(),
+                'message' => 'Failed to clear expired stock. Please try again.',
             ], 500);
         }
     }
@@ -1085,9 +1090,10 @@ class BranchManagerController extends Controller
                 'message' => 'Validation failed: ' . implode(', ', $e->validator->errors()->all()),
             ], 422);
         } catch (\Exception $e) {
+            Log::error('Failed to update product', ['exception' => $e]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update product: ' . $e->getMessage(),
+                'message' => 'Failed to update product. Please try again.',
             ], 500);
         }
     }
@@ -1150,9 +1156,10 @@ class BranchManagerController extends Controller
                 'new_quantity' => $branchStock->stock_quantity,
             ]);
         } catch (\Exception $e) {
+            Log::error('Failed to adjust stock', ['exception' => $e]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to adjust stock: ' . $e->getMessage(),
+                'message' => 'Failed to adjust stock. Please try again.',
             ], 500);
         }
     }
@@ -1255,9 +1262,10 @@ class BranchManagerController extends Controller
                 'message' => 'Validation failed: ' . implode(', ', $e->validator->errors()->all())
             ], 422);
         } catch (\Exception $e) {
+            Log::error('Failed to reject transaction', ['exception' => $e]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to reject transaction: ' . $e->getMessage()
+                'message' => 'Failed to reject transaction. Please try again.'
             ], 500);
         }
     }
@@ -1319,9 +1327,10 @@ class BranchManagerController extends Controller
                 'message' => 'Report updated successfully. Please re-approve the transaction.'
             ]);
         } catch (\Exception $e) {
+            Log::error('Failed to update report', ['exception' => $e]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update report: ' . $e->getMessage()
+                'message' => 'Failed to update report. Please try again.'
             ], 500);
         }
     }

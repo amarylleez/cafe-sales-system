@@ -14,6 +14,7 @@ use App\Models\BranchStock;
 use App\Models\StockLoss;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
 class StaffController extends Controller
@@ -287,9 +288,10 @@ class StaffController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Failed to record sale', ['exception' => $e]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to record sale: ' . $e->getMessage()
+                'message' => 'Failed to record sale. Please try again.'
             ], 500);
         }
     }
@@ -651,9 +653,10 @@ class StaffController extends Controller
                 'message' => 'Product availability updated for your branch',
             ]);
         } catch (\Exception $e) {
+            Log::error('Failed to update product availability', ['exception' => $e]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update availability: ' . $e->getMessage(),
+                'message' => 'Failed to update availability. Please try again.',
             ], 500);
         }
     }
@@ -733,9 +736,10 @@ class StaffController extends Controller
                 'new_quantity' => $branchStock->stock_quantity,
             ]);
         } catch (\Exception $e) {
+            Log::error('Failed to add stock', ['exception' => $e]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to add stock: ' . $e->getMessage(),
+                'message' => 'Failed to add stock. Please try again.',
             ], 500);
         }
     }
@@ -798,9 +802,10 @@ class StaffController extends Controller
                 'new_quantity' => $branchStock->stock_quantity,
             ]);
         } catch (\Exception $e) {
+            Log::error('Failed to adjust stock', ['exception' => $e]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to adjust stock: ' . $e->getMessage(),
+                'message' => 'Failed to adjust stock. Please try again.',
             ], 500);
         }
     }
@@ -880,9 +885,10 @@ class StaffController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Failed to clear expired stock', ['exception' => $e]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to clear expired stock: ' . $e->getMessage(),
+                'message' => 'Failed to clear expired stock. Please try again.',
             ], 500);
         }
     }

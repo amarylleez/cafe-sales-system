@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use App\Models\BranchStock;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class InventoryController extends Controller
 {
@@ -104,9 +105,10 @@ class InventoryController extends Controller
                 'is_available' => $branchStock->is_available,
             ]);
         } catch (\Exception $e) {
+            Log::error('Failed to mark product as sold', ['exception' => $e]);
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to mark as sold: ' . $e->getMessage(),
+                'message' => 'Failed to mark as sold. Please try again.',
             ], 500);
         }
     }

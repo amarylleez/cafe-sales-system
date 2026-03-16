@@ -32,7 +32,7 @@ Route::middleware('auth')->group(function () {
 });
 
 // HQ Admin Routes
-Route::middleware(['auth'])->prefix('hq-admin')->name('hq-admin.')->group(function () {
+Route::middleware(['auth', 'role:hq_admin'])->prefix('hq-admin')->name('hq-admin.')->group(function () {
     // Dashboard
     Route::get('/dashboard', [HQAdminController::class, 'dashboard'])->name('dashboard');
     
@@ -71,7 +71,7 @@ Route::middleware(['auth'])->prefix('hq-admin')->name('hq-admin.')->group(functi
 });
    
 // Branch Manager Routes
-Route::middleware(['auth'])->prefix('branch-manager')->name('branch-manager.')->group(function () {
+Route::middleware(['auth', 'role:branch_manager'])->prefix('branch-manager')->name('branch-manager.')->group(function () {
     // Dashboard
     Route::get('/dashboard', [BranchManagerController::class, 'dashboard'])->name('dashboard');
     
@@ -109,7 +109,7 @@ Route::middleware(['auth'])->prefix('branch-manager')->name('branch-manager.')->
 });
 
 // Staff Routes 
-Route::middleware(['auth'])->prefix('staff')->name('staff.')->group(function () {
+Route::middleware(['auth', 'role:staff'])->prefix('staff')->name('staff.')->group(function () {
     
     // Dashboard
     Route::get('/dashboard', [StaffController::class, 'index'])->name('dashboard');
