@@ -752,6 +752,7 @@ class StaffController extends Controller
                 'success' => true,
                 'message' => 'Stock added successfully',
                 'new_quantity' => $branchStock->stock_quantity,
+                'is_available' => $branchStock->is_available && $branchStock->stock_quantity > 0,
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to add stock', ['exception' => $e]);
@@ -824,6 +825,7 @@ class StaffController extends Controller
                 'success' => true,
                 'message' => 'Stock adjusted successfully',
                 'new_quantity' => $branchStock->stock_quantity,
+                'is_available' => $branchStock->is_available && $branchStock->stock_quantity > 0,
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to adjust stock', ['exception' => $e]);

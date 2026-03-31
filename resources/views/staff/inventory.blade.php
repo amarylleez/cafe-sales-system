@@ -490,6 +490,23 @@ document.addEventListener('DOMContentLoaded', function() {
                         stockBadge.textContent = data.new_quantity + ' units';
                         stockBadge.className = 'badge bg-' + (data.new_quantity > 10 ? 'info' : (data.new_quantity > 0 ? 'warning' : 'danger'));
                     }
+
+                    const availabilityToggle = card.querySelector('.availability-toggle');
+                    const availabilityLabel = card.querySelector('.form-check-label small');
+                    const footerStatus = card.querySelector('.card-footer small');
+                    const isAvailable = !!data.is_available;
+
+                    if (availabilityToggle) {
+                        availabilityToggle.checked = isAvailable;
+                    }
+                    if (availabilityLabel) {
+                        availabilityLabel.textContent = isAvailable ? 'Available' : 'Unavailable';
+                    }
+                    if (footerStatus) {
+                        footerStatus.innerHTML = isAvailable
+                            ? '<i class="bi bi-check-circle text-success"></i> In Stock'
+                            : '<i class="bi bi-x-circle text-danger"></i> Out of Stock';
+                    }
                 }
             } else {
                 alert(data.message || 'Failed to adjust stock');
