@@ -709,6 +709,9 @@ class StaffController extends Controller
             // Get or create branch stock
             $branchStock = BranchStock::getOrCreate($branchId, $id);
             $branchStock->stock_quantity += $request->quantity;
+            if ($branchStock->stock_quantity > 0) {
+                $branchStock->is_available = true;
+            }
             $branchStock->received_date = now(); // Update the date when stock is added
             
             // Calculate expiry date based on category's expiry_hours
@@ -766,6 +769,9 @@ class StaffController extends Controller
             
             if ($request->type === 'add') {
                 $branchStock->stock_quantity += $request->quantity;
+                if ($branchStock->stock_quantity > 0) {
+                    $branchStock->is_available = true;
+                }
                 $branchStock->received_date = now(); // Update the date when stock is added
                 
                 // Calculate expiry date based on category's expiry_hours
@@ -782,6 +788,9 @@ class StaffController extends Controller
                     ], 400);
                 }
                 $branchStock->stock_quantity -= $request->quantity;
+                if ($branchStock->stock_quantity <= 0) {
+                    $branchStock->is_available = false;
+                }
             }
             
             $branchStock->save();
@@ -872,6 +881,7 @@ class StaffController extends Controller
                 
                 // Set stock to 0
                 $stock->stock_quantity = 0;
+                $stock->is_available = false;
                 $stock->save();
             }
             
