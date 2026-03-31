@@ -723,6 +723,18 @@ class StaffController extends Controller
             
             // Get or create branch stock
             $branchStock = BranchStock::getOrCreate($branchId, $id);
+
+            if (
+                $branchStock->stock_quantity > 0
+                && $branchStock->expiry_date
+                && $branchStock->expiry_date->lte(now())
+            ) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This item has expired stock. Please clear expired stock first before restocking.',
+                ], 422);
+            }
+
             $branchStock->stock_quantity += $request->quantity;
             if ($branchStock->stock_quantity > 0) {
                 $branchStock->is_available = true;
@@ -784,6 +796,17 @@ class StaffController extends Controller
             $branchStock = BranchStock::getOrCreate($branchId, $id);
             
             if ($request->type === 'add') {
+                if (
+                    $branchStock->stock_quantity > 0
+                    && $branchStock->expiry_date
+                    && $branchStock->expiry_date->lte(now())
+                ) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'This item has expired stock. Please clear expired stock first before restocking.',
+                    ], 422);
+                }
+
                 $branchStock->stock_quantity += $request->quantity;
                 if ($branchStock->stock_quantity > 0) {
                     $branchStock->is_available = true;

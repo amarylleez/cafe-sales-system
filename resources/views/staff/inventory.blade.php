@@ -620,8 +620,18 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Process each update sequentially
         let completed = 0;
+        const failed = [];
         const processUpdate = (index) => {
             if (index >= updates.length) {
+                if (failed.length > 0) {
+                    const failedList = failed
+                        .slice(0, 5)
+                        .map(item => `${item.name}: ${item.message}`)
+                        .join('\n');
+
+                    alert(`Some items were not restocked:\n${failedList}${failed.length > 5 ? '\n...and more' : ''}`);
+                }
+
                 // All done
                 bulkRestockModal.hide();
                 
@@ -666,11 +676,20 @@ document.addEventListener('DOMContentLoaded', function() {
                             stockBadge.className = 'badge bg-' + (data.new_quantity > 10 ? 'info' : (data.new_quantity > 0 ? 'warning' : 'danger'));
                         }
                     }
+                } else {
+                    failed.push({
+                        name: update.product_name,
+                        message: data.message || 'Restock failed'
+                    });
                 }
                 processUpdate(index + 1);
             })
             .catch(error => {
                 console.error('Error updating product:', update.product_name, error);
+                failed.push({
+                    name: update.product_name,
+                    message: 'Request failed'
+                });
                 processUpdate(index + 1);
             });
         };
