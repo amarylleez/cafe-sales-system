@@ -51,7 +51,11 @@ class BranchStock extends Model
     {
         return self::firstOrCreate(
             ['branch_id' => $branchId, 'product_id' => $productId],
-            ['stock_quantity' => $defaultQuantity, 'is_available' => true, 'received_date' => now()]
+            [
+                'stock_quantity' => $defaultQuantity,
+                'is_available' => $defaultQuantity > 0,
+                'received_date' => now(),
+            ]
         );
     }
 

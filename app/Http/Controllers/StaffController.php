@@ -565,7 +565,9 @@ class StaffController extends Controller
                     ->first();
                 
                 $product->stock_quantity = $branchStock ? $branchStock->stock_quantity : 0;
-                $product->is_available = $branchStock ? $branchStock->is_available : true;
+                $product->is_available = $branchStock
+                    ? ($branchStock->is_available && $branchStock->stock_quantity > 0)
+                    : false;
                 $product->branch_stock_id = $branchStock ? $branchStock->id : null;
                 $product->expiry_date = $branchStock ? $branchStock->expiry_date : null;
                 $product->received_date = $branchStock ? $branchStock->received_date : null;
@@ -623,7 +625,9 @@ class StaffController extends Controller
                     ->first();
                 
                 $product->stock_quantity = $branchStock ? $branchStock->stock_quantity : 0;
-                $product->is_available = $branchStock ? $branchStock->is_available : true;
+                $product->is_available = $branchStock
+                    ? ($branchStock->is_available && $branchStock->stock_quantity > 0)
+                    : false;
                 
                 return $product;
             });
@@ -645,6 +649,15 @@ class StaffController extends Controller
             
             // Get or create branch stock
             $branchStock = BranchStock::getOrCreate($branchId, $id);
+
+            // Zero-stock items cannot be marked available until restocked.
+            if ($request->boolean('is_available') && $branchStock->stock_quantity <= 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot mark product as available with zero stock. Please restock first.',
+                ], 422);
+            }
+
             $branchStock->is_available = $request->boolean('is_available');
             $branchStock->save();
 
@@ -679,7 +692,9 @@ class StaffController extends Controller
                     ->first();
                 
                 $product->stock_quantity = $branchStock ? $branchStock->stock_quantity : 0;
-                $product->is_available = $branchStock ? $branchStock->is_available : true;
+                $product->is_available = $branchStock
+                    ? ($branchStock->is_available && $branchStock->stock_quantity > 0)
+                    : false;
                 
                 return $product;
             });
